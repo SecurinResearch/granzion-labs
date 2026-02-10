@@ -1,0 +1,119 @@
+{
+  "catalogs": [
+    {
+      "name": "granzion_catalog",
+      "type": "postgres",
+      "config": {
+        "jdbc_uri": "jdbc:postgresql://postgres:5432/granzion_lab",
+        "username": "granzion",
+        "password": "changeme_in_production"
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "name": "granzion_graph",
+      "vertices": [
+        {
+          "type": "Identity",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "identities",
+          "id": "id",
+          "properties": ["type", "name", "email", "keycloak_id", "permissions", "created_at"]
+        },
+        {
+          "type": "User",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "identities",
+          "id": "id",
+          "filter": "type = 'user'",
+          "properties": ["name", "email", "keycloak_id", "permissions", "created_at"]
+        },
+        {
+          "type": "Agent",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "identities",
+          "id": "id",
+          "filter": "type = 'agent'",
+          "properties": ["name", "keycloak_id", "permissions", "created_at"]
+        },
+        {
+          "type": "Service",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "identities",
+          "id": "id",
+          "filter": "type = 'service'",
+          "properties": ["name", "keycloak_id", "permissions", "created_at"]
+        }
+      ],
+      "edges": [
+        {
+          "type": "DELEGATES_TO",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "delegations",
+          "from": {
+            "vertex": "Identity",
+            "join_key": "from_identity_id"
+          },
+          "to": {
+            "vertex": "Identity",
+            "join_key": "to_identity_id"
+          },
+          "properties": ["permissions", "created_at", "expires_at", "active"]
+        },
+        {
+          "type": "ACTS_FOR",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "delegations",
+          "from": {
+            "vertex": "Agent",
+            "join_key": "to_identity_id"
+          },
+          "to": {
+            "vertex": "User",
+            "join_key": "from_identity_id"
+          },
+          "filter": "active = true",
+          "properties": ["permissions", "created_at"]
+        },
+        {
+          "type": "COMMUNICATES_WITH",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "messages",
+          "from": {
+            "vertex": "Agent",
+            "join_key": "from_agent_id"
+          },
+          "to": {
+            "vertex": "Agent",
+            "join_key": "to_agent_id"
+          },
+          "properties": ["content", "message_type", "encrypted", "timestamp"]
+        },
+        {
+          "type": "USES_TOOL",
+          "catalog": "granzion_catalog",
+          "schema": "public",
+          "table": "audit_logs",
+          "from": {
+            "vertex": "Agent",
+            "join_key": "identity_id"
+          },
+          "to": {
+            "vertex": "Service",
+            "join_key": "resource_id"
+          },
+          "filter": "resource_type = 'service'",
+          "properties": ["action", "details", "timestamp"]
+        }
+      ]
+    }
+  ]
+}

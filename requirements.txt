@@ -1,0 +1,59 @@
+# Core Framework
+agno>=1.1.0
+litellm>=1.30.0
+mcp[cli]>=0.9.0  # Model Context Protocol SDK
+
+# Database
+psycopg2-binary>=2.9.9
+asyncpg>=0.29.0
+pgvector>=0.2.4
+sqlalchemy>=2.0.25
+alembic>=1.13.1
+
+# Identity & Auth
+python-keycloak>=3.9.0
+pyjwt>=2.8.0
+cryptography>=42.0.0
+
+# Graph Database
+gremlinpython>=3.7.0
+
+# Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+hypothesis>=6.92.0
+pytest-cov>=4.1.0
+
+# Web Framework (for API and TUI)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+websockets>=12.0
+
+# TUI
+rich>=13.7.0
+textual>=0.48.0
+
+# Utilities
+pydantic>=2.5.3
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+httpx>=0.26.0
+aiohttp>=3.9.1
+
+# Logging
+loguru>=0.7.2
+
+# Data Processing
+pandas>=2.1.4
+numpy>=1.26.3
+
+# Vector Operations
+sentence-transformers>=2.3.1
+openai>=1.10.0
+
+# Development
+black>=23.12.1
+ruff>=0.1.11
+mypy>=1.8.0
+# Async Utilities
+nest-asyncio>=1.6.0

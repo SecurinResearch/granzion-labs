@@ -12,9 +12,9 @@ This lab exists to systematically break agentic systems through **identity-centr
 ## 🏗️ Architecture
 
 - **4 Specialized Agents**: Orchestrator, Researcher, Executor, Monitor.
-- **5 High-Impact MCP Servers**: Identity & Agent Card, Memory (RAG), Data (SQL), Comms (A2A), Infra.
+- **6 High-Impact MCP Servers**: Identity, Agent Card, Memory (RAG), Data (SQL), Comms (A2A), and Infra.
 - **Unified Data Layer**: PostgreSQL + pgvector (Vector) + PuppyGraph (Graph).
-- **Security Hardened**: Identity-first checks & Guest/Anonymous access restrictions across ALL core MCP tools.
+- **Identity-First Architecture**: Guest/Anonymous access restrictions and delegation tracking across ALL core MCP tools.
 - **Agno A2A Identity**: Standardized `AgentCard` discovery and handshake protocol.
 - **High-Fidelity Dashboard**: React-based "Dark Ops" console for real-time attack monitoring.
 
@@ -57,10 +57,9 @@ Full details in [VULNERABILITIES.md](docs/VULNERABILITIES.md) and [threat-taxono
 
 ## 📚 Documentation Reference
 
-- **[ONBOARDING.md](docs/ONBOARDING.md)**: Single-page onboarding — QUICKSTART, CTO briefs, diagrams, identity testing, scenarios, CI.
+- **[ONBOARDING.md](docs/ONBOARDING.md)**: Setup, identity testing, and scenarios.
 - **[architecture.md](docs/architecture.md)**: System design and identity-first principles.
 - **[agents.md](docs/agents.md)**: Agent capabilities, goals, and known flaws.
-- **[SEED_DATA.md](docs/SEED_DATA.md)**: Reference for initial users, delegations, and cards.
 - **[DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)**: Extending the lab with new agents and MCPs.
 
 ---

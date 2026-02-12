@@ -229,6 +229,7 @@ python scripts/generate_realistic_data.py \
 - Realistic content with repetition for embedding
 - Metadata includes source, category, version
 - Placeholder embeddings (1536 dimensions)
+  - **Note**: The static SQL seed data contains random vectors. To enable functional semantic search for RAG scenarios, run `scripts/debug_rag.py` to generate real embeddings for the documents.
 
 **Messages:**
 - Mix of task requests, responses, status updates, alerts

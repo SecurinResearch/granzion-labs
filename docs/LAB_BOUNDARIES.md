@@ -1,6 +1,6 @@
 # Lab Boundaries and Out-of-Scope
 
-This document states what the Granzion Lab **explicitly does not test** or support. Use it for CTO and stakeholder alignment.
+This document states what the Granzion Lab **explicitly does not test** or support.
 
 ## Out-of-Scope Topics
 
@@ -16,4 +16,3 @@ This document states what the Granzion Lab **explicitly does not test** or suppo
 ## Reference
 
 - Threat taxonomy and coverage: [threat_coverage.md](threat_coverage.md)
-- CTO executive summary: [architecture-docs/CTO-01-EXECUTIVE-SUMMARY-AND-CURRENT-STATE.md](architecture-docs/CTO-01-EXECUTIVE-SUMMARY-AND-CURRENT-STATE.md)

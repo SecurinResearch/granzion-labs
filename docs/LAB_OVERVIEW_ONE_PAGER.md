@@ -15,11 +15,13 @@ The lab consists of a multi-agent swarm operating over a unified database, commu
 - **Monitor (`...104`)**: The Sentry. Watcher of logs and broadcasts. *Weakness: Periodic polling & communication blind spots.*
 
 ### 🔌 The MCP (Model Context Protocol) Servers
-- **Comms**: Handles routing, broadcasts, and message storage.
-- **Identity**: Manages user/agent personas and permissions.
-- **Memory**: Vector database for RAG-based storage.
-- **Infra**: Bridge to the underlying system/Docker environment.
+The lab integrates **6 high-impact MCP servers**:
+- **Identity**: Personas and primary authentication.
 - **Agent Card**: A2A handshake and trust verification protocol.
+- **Memory**: Vector database for RAG-based storage.
+- **Data**: Standard SQL interactions for app data.
+- **Comms**: Broadcast and messaging hub.
+- **Infra**: Bridge to the underlying Dockerized environment.
 
 ---
 

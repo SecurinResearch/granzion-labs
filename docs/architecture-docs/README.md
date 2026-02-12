@@ -18,14 +18,7 @@ This folder contains the **canonical architecture**, **workflow**, **component g
 | **[RED_TEAM_TAXONOMY_FIT_AND_CRITIQUE.md](RED_TEAM_TAXONOMY_FIT_AND_CRITIQUE.md)** | How the lab fits red teaming for the Agentic Threats Taxonomy, plus critique and prioritized improvements (including orchestrator issues). |
 | **[ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md)** | Mermaid diagrams: full architecture (identity-first), layered view, identity/delegation detail, component–identity relationship, data flow sequence. |
 | **[WORKFLOW_DIAGRAM.md](WORKFLOW_DIAGRAM.md)** | Mermaid diagrams: lab setup, identity resolution, scenario execution, agent chat, end-to-end identity flow, A2A message flow, workflow summary. |
-| **[CTO-01-EXECUTIVE-SUMMARY-AND-CURRENT-STATE.md](CTO-01-EXECUTIVE-SUMMARY-AND-CURRENT-STATE.md)** | CTO brief Part 1: What the lab is, why we built it, what exists today (delivered vs gaps), how it fits the taxonomy. |
-| **[CTO-02-DIAGRAMS-EXPLAINED-AND-CURRENT-IMPLEMENTATION.md](CTO-02-DIAGRAMS-EXPLAINED-AND-CURRENT-IMPLEMENTATION.md)** | CTO brief Part 2: Crystal-clear explanation of every architecture and workflow diagram; what each element means, where it lives in code, current vs ideal. |
-| **[CTO-03-GAPS-IMPROVEMENTS-AND-ROADMAP.md](CTO-03-GAPS-IMPROVEMENTS-AND-ROADMAP.md)** | CTO brief Part 3: Full list of gaps and improvements (P0–P3), concrete actions, verification, effort; out-of-scope; suggested roadmap and one-page summary. |
-
-## Quick links
-
 - **New to the lab?** Start with [WORKFLOW.md](WORKFLOW.md), then [ARCHITECTURE.md](ARCHITECTURE.md).
-- **Implementing or debugging?** Use the component docs (01–06) and the main [../specs/](specs) and [../VULNERABILITIES.md](../VULNERABILITIES.md).
+- **Implementing or debugging?** Use the component docs (01–06) and the main [../VULNERABILITIES.md](../VULNERABILITIES.md).
 - **Explaining to stakeholders?** Use [ARCHITECTURE.md](ARCHITECTURE.md) and [WORKFLOW.md](WORKFLOW.md).
 - **Planning improvements?** Use [RED_TEAM_TAXONOMY_FIT_AND_CRITIQUE.md](RED_TEAM_TAXONOMY_FIT_AND_CRITIQUE.md).
-- **Presenting to CTO / leadership?** Use the three CTO briefs in order: [CTO-01](CTO-01-EXECUTIVE-SUMMARY-AND-CURRENT-STATE.md) (executive summary and current state) → [CTO-02](CTO-02-DIAGRAMS-EXPLAINED-AND-CURRENT-IMPLEMENTATION.md) (diagrams explained) → [CTO-03](CTO-03-GAPS-IMPROVEMENTS-AND-ROADMAP.md) (gaps, improvements, roadmap).

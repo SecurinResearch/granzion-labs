@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **🚀 [QUICK START GUIDE](QUICKSTART.md)** - Follow this for a zero-to-hero setup in minutes.
 
-A controlled, intentionally vulnerable sandbox environment designed to validate detection and exploitation of **53 threats across 9 categories** in the Granzion Agentic Threats Taxonomy.
+A controlled, intentionally vulnerable sandbox environment designed to validate detection and exploitation of **over 40 threats across 8 core categories** in the Granzion Agentic Threats Taxonomy.
 
 ## 🛠️ The Mission
 
@@ -12,9 +12,9 @@ This lab exists to systematically break agentic systems through **identity-centr
 ## 🏗️ Architecture
 
 - **4 Specialized Agents**: Orchestrator, Researcher, Executor, Monitor.
-- **5 High-Impact MCP Servers**: Identity & Agent Card, Memory (RAG), Data (SQL), Comms (A2A), Infra.
+- **6 High-Impact MCP Servers**: Identity, Agent Card, Memory (RAG), Data (SQL), Comms (A2A), and Infra.
 - **Unified Data Layer**: PostgreSQL + pgvector (Vector) + PuppyGraph (Graph).
-- **Security Hardened**: Zero Trust identity checks & Guest/Anonymous access restrictions across ALL core MCP tools.
+- **Security Hardened**: Identity-first checks & Guest/Anonymous access restrictions across ALL core MCP tools.
 - **Agno A2A Identity**: Standardized `AgentCard` discovery and handshake protocol.
 - **High-Fidelity Dashboard**: React-based "Dark Ops" console for real-time attack monitoring.
 
@@ -30,7 +30,10 @@ docker compose up -d
 # 2. Complete Lab Initialization (Database, Keycloak, A2A Cards)
 docker compose exec granzion-lab python scripts/full_setup.py
 
-# 3. Launch Dashboard
+# 3. Seed RAG Memory (Critical for Researcher Agent)
+docker compose exec granzion-lab python scripts/debug_rag.py
+
+# 4. Launch Dashboard
 cd frontend && npm install && npm run dev
 ```
 
@@ -43,7 +46,7 @@ cd frontend && npm install && npm run dev
 
 ## 🛡️ Threat & Vulnerability Catalog
 
-The lab covers the entire A2A threat landscape:
+The lab covers the critical A2A threat landscape:
 
 - **Identity Confusion**: Delegation depth bypasses and card signature forgery.
 - **Memory Poisoning**: RAG context stuffing and vector similarity manipulation.
@@ -54,7 +57,7 @@ Full details in [VULNERABILITIES.md](docs/VULNERABILITIES.md) and [threat-taxono
 
 ## 📚 Documentation Reference
 
-- **[ONBOARDING.md](docs/ONBOARDING.md)**: Single-page onboarding — QUICKSTART, CTO briefs, diagrams, identity testing, scenarios, CI.
+- **[ONBOARDING.md](docs/ONBOARDING.md)**: Single-page onboarding — Setup, identity testing, scenarios, and architecture links.
 - **[architecture.md](docs/architecture.md)**: System design and identity-first principles.
 - **[agents.md](docs/agents.md)**: Agent capabilities, goals, and known flaws.
 - **[SEED_DATA.md](docs/SEED_DATA.md)**: Reference for initial users, delegations, and cards.

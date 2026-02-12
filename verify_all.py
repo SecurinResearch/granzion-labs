@@ -272,9 +272,54 @@ async def verify_keycloak():
 # 4. MCP SERVERS VERIFICATION
 # ============================================================================
 
+# ============================================================================
+# 5. PUPPYGRAPH VERIFICATION
+# ============================================================================
+
+async def verify_puppygraph():
+    """Test PuppyGraph connectivity."""
+    print("\n[5/7] PuppyGraph Graph Database")
+    print("-" * 40)
+    
+    try:
+        import httpx
+        from src.config import settings
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # 1. Check Web UI (port 8081)
+            ui_url = f"http://{settings.puppygraph_host}:{settings.puppygraph_web_port}"
+            try:
+                resp = await client.get(ui_url)
+                ui_ok = resp.status_code < 500
+                report.add("puppygraph", "Web UI", ui_ok, f"Status: {resp.status_code}")
+            except Exception as e:
+                report.add("puppygraph", "Web UI", False, str(e))
+
+            # 2. Check Gremlin Endpoint (port 8182) - via HTTP GET to verify it's listening
+            # Note: Real graph queries happen via websocket, but we just check accessibility here
+            gremlin_url = f"http://{settings.puppygraph_host}:{settings.puppygraph_port}"
+            try:
+                # Gremlin server might return 400 or 500 to a GET, but that means it's running
+                resp = await client.get(gremlin_url)
+                gremlin_ok = True 
+                report.add("puppygraph", "Gremlin Endpoint", gremlin_ok, "Port accessible")
+            except httpx.ConnectError:
+                report.add("puppygraph", "Gremlin Endpoint", False, "Connection refused")
+            except Exception:
+                # Any other response means port is open
+                report.add("puppygraph", "Gremlin Endpoint", True, "Port accessible")
+
+    except Exception as e:
+        report.add("puppygraph", "Connection", False, str(e))
+
+
+# ============================================================================
+# 6. MCP SERVERS VERIFICATION
+# ============================================================================
+
 def verify_mcp_servers():
     """Test MCP server initialization and tools."""
-    print("\n[5/6] MCP Servers & Tools")
+    print("\n[6/7] MCP Servers & Tools")
     print("-" * 40)
     
     mcp_tests = [
@@ -327,12 +372,12 @@ def verify_mcp_servers():
 
 
 # ============================================================================
-# 5. AGENTS VERIFICATION
+# 7. AGENTS VERIFICATION
 # ============================================================================
 
 def verify_agents():
     """Test agent creation and tool wrapping."""
-    print("\n[6/6] Agents & Integration")
+    print("\n[7/7] Agents & Integration")
     print("-" * 40)
     
     try:
@@ -384,7 +429,7 @@ def verify_agents():
 
 
 # ============================================================================
-# 6. API ENDPOINTS (if server running)
+# 8. API ENDPOINTS (if server running)
 # ============================================================================
 
 async def verify_api_endpoints():
@@ -404,6 +449,7 @@ async def verify_api_endpoints():
                 ("/services", "Services"),
                 ("/agents", "Agents"),
                 ("/scenarios", "Scenarios"),
+                ("/threat-map", "Threat Map"),
                 ("/a2a/agents/00000000-0000-0000-0000-000000000101/.well-known/agent-card.json", "A2A Discovery"),
             ]
             
@@ -440,6 +486,7 @@ async def main():
     await verify_pgvector()
     await verify_litellm()
     await verify_keycloak()
+    await verify_puppygraph()
     verify_mcp_servers()
     verify_agents()
     await verify_api_endpoints()

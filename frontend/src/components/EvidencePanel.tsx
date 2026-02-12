@@ -89,7 +89,7 @@ export const EvidencePanel = () => {
                                 No evidence recorded yet. Run scenarios or use the console to generate audit entries.
                             </motion.p>
                         ) : (
-                            evidence.map((entry, i) => (
+                            evidence.map((entry, _i) => (
                                 <motion.div
                                     key={entry.id}
                                     initial={{ opacity: 0, y: 10 }}

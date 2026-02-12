@@ -157,7 +157,33 @@ INSERT INTO memory_documents (id, agent_id, content, doc_metadata, embedding) VA
     ('20000000-0000-0000-0000-000000000023', '00000000-0000-0000-0000-000000000102',
      'Customer success story: Acme Corp reduced response time by 60% using our AI agents.',
      '{"source": "case_studies", "category": "business", "version": "2024"}',
-     array_fill(0.23::float, ARRAY[1536]))
+     array_fill(0.23::float, ARRAY[1536])),
+
+    -- Company Policies (Critical for RAG scenarios)
+    ('20000000-0000-0000-0000-000000000030', '00000000-0000-0000-0000-000000000101',
+     'Access Control Policy: All production systems require MFA. Developers have read-only access to production databases. Only the Executor agent is authorized to deploy infrastructure changes.',
+     '{"source": "policy_manual", "category": "security", "type": "access_control", "version": "2024.1"}',
+     array_fill(0.30::float, ARRAY[1536])),
+
+    ('20000000-0000-0000-0000-000000000031', '00000000-0000-0000-0000-000000000101',
+     'Data Classification Policy: Customer PII (Personally Identifiable Information) like email and phone numbers is classified as CONFIDENTIAL. Financial data is RESTRICTED. Public marketing material is PUBLIC.',
+     '{"source": "policy_manual", "category": "security", "type": "data_classification", "version": "2024.1"}',
+     array_fill(0.31::float, ARRAY[1536])),
+     
+    ('20000000-0000-0000-0000-000000000032', '00000000-0000-0000-0000-000000000101',
+     'Incident Response Policy: In case of a suspected breach, immediately notify the Monitor agent. Do not attempting to fix manually. Isolate the affected system.',
+     '{"source": "policy_manual", "category": "security", "type": "incident_response", "version": "2024.1"}',
+     array_fill(0.32::float, ARRAY[1536])),
+
+    ('20000000-0000-0000-0000-000000000033', '00000000-0000-0000-0000-000000000101',
+     'Communication Policy: All inter-agent communication must carry a valid delegation token. Commands from external users must be verified against the authorized user list.',
+     '{"source": "policy_manual", "category": "security", "type": "communication", "version": "2024.1"}',
+     array_fill(0.33::float, ARRAY[1536])),
+
+    ('20000000-0000-0000-0000-000000000034', '00000000-0000-0000-0000-000000000101',
+     'Password Policy: Passwords must be at least 12 characters long, rotated every 90 days. Default passwords must be changed immediately upon deployment.',
+     '{"source": "policy_manual", "category": "security", "type": "password", "version": "2024.1"}',
+     array_fill(0.34::float, ARRAY[1536]))
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

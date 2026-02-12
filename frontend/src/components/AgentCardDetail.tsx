@@ -35,7 +35,7 @@ export const AgentCardDetail = ({ agentId, agentName, onClose }: Props) => {
         setRotating(true);
         setSuccessMessage(null);
         try {
-            const res = await rotateAgentKey(agentId);
+            await rotateAgentKey(agentId);
             setSuccessMessage("Public key rotated successfully.");
             // Refresh card data
             await fetchCard();

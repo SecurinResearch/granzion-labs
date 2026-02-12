@@ -11,14 +11,18 @@ import {
   Lock,
   Bell,
   User,
-  FileSearch
+  FileSearch,
+  AlertTriangle,
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAgents, getEvents, getLogs, getServices } from './services/api';
+import { getAgents, getEvents, getLogs, getServices, resetLab } from './services/api';
 import { AgentCardDetail } from './components/AgentCardDetail';
 import { ScenarioPanel } from './components/ScenarioPanel';
 import { InteractiveConsole } from './components/InteractiveConsole';
 import { EvidencePanel } from './components/EvidencePanel';
+import { ThreatMapPanel } from './components/ThreatMapPanel';
 
 // --- Types ---
 interface Agent {
@@ -123,6 +127,22 @@ const App = () => {
   const [services, setServices] = useState<ServiceStatus>({});
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [consoleAgentTarget, setConsoleAgentTarget] = useState<Agent | null>(null);
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetLab = async () => {
+    if (!confirm('Reset lab to clean state? This will truncate messages, audit logs, memory documents, and scenario executions, then re-seed all data.')) return;
+    setResetting(true);
+    try {
+      await resetLab();
+      alert('Lab reset complete! All data restored to default state.');
+      window.location.reload();
+    } catch (err) {
+      alert('Lab reset failed. Check console for details.');
+      console.error(err);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchAgents = async () => {
@@ -150,7 +170,12 @@ const App = () => {
       try {
         const data = await getEvents();
         if (data.events) {
-          setEvents(prev => [...data.events, ...prev].slice(0, 50));
+          setEvents(prev => {
+            // Deduplicate based on ID to prevent "static stream" effect
+            const newEvents = data.events.filter((e: any) => !prev.some((p: any) => p.id === e.id));
+            if (newEvents.length === 0) return prev;
+            return [...newEvents, ...prev].slice(0, 50);
+          });
         }
       } catch (err) {
         console.error("Failed to fetch events:", err);
@@ -170,14 +195,14 @@ const App = () => {
 
     fetchEvents();
     fetchLogs();
-    getServices().then((d: { services?: ServiceStatus }) => d.services && setServices(d.services)).catch(() => {});
+    getServices().then((d: { services?: ServiceStatus }) => d.services && setServices(d.services)).catch(() => { });
 
     // Polling every 5s for events, 10s for agents/logs, 15s for services
     const eventInterval = setInterval(fetchEvents, 5000);
     const mainInterval = setInterval(() => {
       fetchAgents();
       fetchLogs();
-      getServices().then((d: { services?: ServiceStatus }) => d.services && setServices(d.services)).catch(() => {});
+      getServices().then((d: { services?: ServiceStatus }) => d.services && setServices(d.services)).catch(() => { });
     }, 10000);
 
     return () => {
@@ -205,6 +230,7 @@ const App = () => {
           <SidebarItem icon={Terminal} label="Console" active={activeTab === 'console'} onClick={() => setActiveTab('console')} />
           <SidebarItem icon={Shield} label="Scenarios" active={activeTab === 'scenarios'} onClick={() => setActiveTab('scenarios')} />
           <SidebarItem icon={FileSearch} label="Evidence" active={activeTab === 'evidence'} onClick={() => setActiveTab('evidence')} />
+          <SidebarItem icon={AlertTriangle} label="Threat Map" active={activeTab === 'threats'} onClick={() => setActiveTab('threats')} />
           <SidebarItem icon={MessageSquare} label="Live Traffic" active={activeTab === 'traffic'} onClick={() => setActiveTab('traffic')} />
           <SidebarItem icon={Database} label="System Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
         </nav>
@@ -244,6 +270,15 @@ const App = () => {
           </div>
 
           <div className="flex items-center gap-6">
+            <button
+              onClick={handleResetLab}
+              disabled={resetting}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all disabled:opacity-50"
+              title="Reset lab database to clean state"
+            >
+              {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              {resetting ? 'Resetting…' : 'Reset Lab'}
+            </button>
             <button className="text-gray-400 hover:text-white transition-colors relative">
               <Bell size={20} />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-highlight rounded-full" />
@@ -456,6 +491,17 @@ const App = () => {
                     </div>
                   ))}
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'threats' && (
+              <motion.div
+                key="threats"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="h-full"
+              >
+                <ThreatMapPanel />
               </motion.div>
             )}
 

@@ -56,4 +56,16 @@ export const rotateAgentKey = async (agentId: string) => {
     return response.data;
 };
 
+/** Reset the lab to a clean state (truncate transient data + re-seed). */
+export const resetLab = async () => {
+    const response = await api.post('/reset-lab', {}, { timeout: 30000 });
+    return response.data;
+};
+
+/** Get vulnerability catalog for the Threat Map panel. */
+export const getThreatMap = async () => {
+    const response = await api.get('/threat-map');
+    return response.data;
+};
+
 export default api;

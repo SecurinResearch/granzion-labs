@@ -11,6 +11,8 @@ from loguru import logger
 from uuid import UUID
 from fastapi import FastAPI, Header, Request, Depends
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.encoders import jsonable_encoder
 
 from src.config import settings
 from src.mcps.comms_mcp import CommsMCPServer
@@ -269,23 +271,62 @@ async def initialize_keycloak():
 
 
 async def initialize_puppygraph():
-    """Initialize PuppyGraph schema."""
+    """Initialize PuppyGraph: wait for readiness, then upload graph schema."""
     logger.info("Initializing PuppyGraph...")
-    
+
     import httpx
-    
-    # Check if PuppyGraph is accessible
+    import json as _json
+    import os
+    import asyncio as _asyncio
+
+    base_url = f"http://{settings.puppygraph_host}:{settings.puppygraph_web_port}"
+    max_retries = 5
+    puppygraph_ready = False
+
+    # --- Step 1: Wait for PuppyGraph to become reachable ---
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(base_url)
+                if resp.status_code < 500:
+                    logger.info(f"✓ PuppyGraph web UI reachable (attempt {attempt})")
+                    puppygraph_ready = True
+                    break
+                else:
+                    logger.warning(f"⚠ PuppyGraph returned {resp.status_code} (attempt {attempt})")
+        except Exception as e:
+            logger.warning(f"⚠ PuppyGraph not reachable (attempt {attempt}/{max_retries}): {e}")
+        if attempt < max_retries:
+            await _asyncio.sleep(min(attempt * 3, 15))
+
+    if not puppygraph_ready:
+        logger.warning("⚠ PuppyGraph did not become reachable after retries. Graph queries will use SQL fallback.")
+        return
+
+    # --- Step 2: Upload graph schema ---
+    schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "puppygraph", "schema.json")
+    if not os.path.exists(schema_path):
+        logger.warning(f"⚠ PuppyGraph schema file not found at {schema_path}. Skipping schema upload.")
+        return
+
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"http://{settings.puppygraph_host}:{settings.puppygraph_web_port}")
-            if resp.status_code == 200:
-                logger.info("✓ PuppyGraph web UI is accessible")
+        with open(schema_path, "r") as f:
+            schema = _json.load(f)
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # PuppyGraph schema API: PUT /schema with Basic auth (puppygraph:<password>)
+            auth = ("puppygraph", settings.postgres_password)
+            resp = await client.put(f"{base_url}/schema", json=schema, auth=auth)
+            if resp.status_code in (200, 201):
+                logger.info("✓ PuppyGraph schema uploaded successfully")
+            elif resp.status_code == 409:
+                logger.info("✓ PuppyGraph schema already loaded (409 conflict)")
             else:
-                logger.warning(f"⚠ PuppyGraph returned status {resp.status_code}")
+                logger.warning(f"⚠ PuppyGraph schema upload returned {resp.status_code}: {resp.text[:300]}")
     except Exception as e:
-        logger.warning(f"⚠ PuppyGraph not accessible: {e}")
-        logger.warning("  Graph queries will use fallback SQL queries")
-    
+        logger.warning(f"⚠ PuppyGraph schema upload failed: {e}")
+        logger.warning("  Graph queries will use SQL fallback")
+
     logger.info("PuppyGraph initialization complete")
 
 
@@ -758,48 +799,60 @@ async def start_api_server():
     
     @app.get("/scenarios")
     async def list_scenarios():
-        """List all scenarios from scenarios folder."""
+        """List all scenarios with full metadata from scenario engine."""
         import os
         import re
-        
+
         scenarios = []
-        scenarios_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scenarios")
-        
+
+        # --- Primary: use the scenario engine for rich metadata ---
         try:
-            if os.path.exists(scenarios_dir):
-                for filename in sorted(os.listdir(scenarios_dir)):
-                    if filename.startswith("s") and filename.endswith(".py"):
-                        # Extract ID and name from filename like s01_identity_confusion.py
-                        match = re.match(r"(s\d+)_(.+)\.py", filename)
-                        if match:
-                            scenario_id = match.group(1)
-                            scenario_name = match.group(2).replace("_", " ").title()
-                            scenarios.append({
-                                "id": scenario_id,
-                                "name": scenario_name,
-                                "file": filename
-                            })
-            
-            if not scenarios:
-                # Fallback if no scenarios found
-                scenarios = [
-                    {"id": "s01", "name": "Identity Confusion"},
-                    {"id": "s02", "name": "Memory Poisoning"},
-                    {"id": "s03", "name": "A2A Message Forgery"},
-                    {"id": "s04", "name": "Tool Parameter Injection"},
-                    {"id": "s05", "name": "Workflow Hijacking"}
-                ]
-                
-            return JSONResponse({
-                "scenarios": scenarios,
-                "count": len(scenarios)
-            })
-        except Exception as e:
-            logger.error(f"Failed to list scenarios: {e}")
-            return JSONResponse({
-                "scenarios": [],
-                "error": str(e)
-            }, status_code=500)
+            from src.scenarios.discovery import discover_scenarios as _disc
+            discovered = _disc()
+            difficulty_map = {"Easy": 1, "Medium": 2, "Hard": 3}
+            for s in discovered:
+                scenarios.append({
+                    "id": s.id.lower(),
+                    "name": s.name,
+                    "description": s.description,
+                    "threat_category": s.category.value,
+                    "complexity": difficulty_map.get(s.difficulty.value, 2),
+                    "difficulty": s.difficulty.value,
+                    "agents_involved": s.agents_involved,
+                    "mcps_involved": s.mcps_involved,
+                    "observable_changes": s.observable_changes,
+                    "estimated_duration": s.estimated_duration,
+                    "threat_ids": s.threat_ids,
+                    "steps_count": len(s.attack_steps),
+                    "criteria_count": len(s.success_criteria),
+                })
+        except Exception as disc_err:
+            logger.warning(f"Engine discovery failed, falling back to filenames: {disc_err}")
+
+        # --- Fallback: filename parsing ---
+        if not scenarios:
+            scenarios_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scenarios")
+            try:
+                if os.path.exists(scenarios_dir):
+                    for filename in sorted(os.listdir(scenarios_dir)):
+                        if filename.startswith("s") and filename.endswith(".py"):
+                            match = re.match(r"(s\d+)_(.+)\.py", filename)
+                            if match:
+                                scenarios.append({
+                                    "id": match.group(1),
+                                    "name": match.group(2).replace("_", " ").title(),
+                                    "description": "",
+                                    "threat_category": "Unknown",
+                                    "complexity": 2,
+                                    "difficulty": "Medium",
+                                })
+            except Exception:
+                pass
+
+        return JSONResponse({
+            "scenarios": scenarios,
+            "count": len(scenarios)
+        })
 
     @app.get("/logs")
     async def get_logs(lines: int = 50):
@@ -836,6 +889,7 @@ async def start_api_server():
                 messages = db.execute(stmt).all()
                 for msg, source_name in messages:
                     events.append({
+                        "id": str(msg.id),
                         "timestamp": msg.timestamp.strftime("%H:%M:%S"),
                         "type": "A2A",
                         "source": source_name,
@@ -850,6 +904,7 @@ async def start_api_server():
                 logs = db.execute(stmt).all()
                 for log, source_name in logs:
                     events.append({
+                        "id": str(log.id),
                         "timestamp": log.timestamp.strftime("%H:%M:%S"),
                         "type": log.action.upper(),
                         "source": source_name,
@@ -860,16 +915,6 @@ async def start_api_server():
                 events.sort(key=lambda x: x["timestamp"], reverse=True)
                 events = events[:20]
 
-            # Fallback for empty lab
-            if not events:
-                now = datetime.now().strftime("%H:%M:%S")
-                events.append({
-                    "timestamp": now,
-                    "type": "SYSTEM",
-                    "source": "Lab Manager",
-                    "message": "Waiting for live A2A traffic via scenarios or console..."
-                })
-                
             return {"events": events}
         except Exception as e:
             logger.error(f"Event fetch failed: {e}")
@@ -937,7 +982,9 @@ async def start_api_server():
             evidence_out = []
             for e in (result.evidence or []):
                 evidence_out.append(e if isinstance(e, str) else str(e))
-            payload = {
+
+            # Use jsonable_encoder to handle datetime, UUID, etc. safely
+            payload = jsonable_encoder({
                 "scenario_id": result.scenario_id,
                 "status": "completed",
                 "success": result.success,
@@ -946,15 +993,15 @@ async def start_api_server():
                 "steps_succeeded": result.steps_succeeded,
                 "steps_failed": result.steps_failed,
                 "steps_executed": result.steps_executed,
-                "steps": result.step_results,  # Added detailed steps
+                "steps": result.step_results,
                 "criteria_passed": result.criteria_passed,
                 "criteria_failed": result.criteria_failed,
                 "criteria_checked": result.criteria_checked,
                 "evidence": evidence_out,
-                "state_before": result.initial_state,  # Added initial state
-                "state_after": result.final_state,    # Added final state
+                "state_before": result.initial_state,
+                "state_after": result.final_state,
                 "errors": getattr(result, "errors", []) or [],
-            }
+            })
             return JSONResponse(payload)
         except Exception as e:
             logger.exception(f"Scenario run failed: {e}")
@@ -997,6 +1044,204 @@ async def start_api_server():
         except Exception as e:
             logger.error(f"Key rotation failed: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
+
+    @app.post("/reset-lab")
+    async def reset_lab():
+        """Reset the lab to a clean state: truncate transient data and re-seed."""
+        from src.database.connection import get_db
+        from sqlalchemy import text
+        import os
+
+        results = {"truncated": [], "seeded": [], "errors": []}
+
+        try:
+            with get_db() as db:
+                # 1. Truncate transient tables
+                for table in ["messages", "audit_logs", "memory_documents", "scenario_executions"]:
+                    try:
+                        count = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                        db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+                        results["truncated"].append({"table": table, "rows_removed": count})
+                    except Exception as te:
+                        results["errors"].append(f"Truncate {table}: {te}")
+
+                db.commit()
+
+                # 2. Re-run seed SQL files
+                db_init_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db", "init")
+                for sql_file in ["03_seed_data.sql", "04_realistic_seed_data.sql"]:
+                    sql_path = os.path.join(db_init_dir, sql_file)
+                    if os.path.exists(sql_path):
+                        try:
+                            with open(sql_path, 'r') as f:
+                                sql_content = f.read()
+                            logger.warning(f"Seeding {sql_file} - {len(sql_content)} bytes | Path: {sql_path}")
+                            
+                            # Use raw DBAPI execution via cursor to handle multiple statements properly
+                            # This avoids issues with manual splitting on ';' (breaking strings)
+                            # and parameter binding issues in SQLAlchemy
+                            connection = db.connection().connection
+                            with connection.cursor() as cursor:
+                                try:
+                                    logger.warning(f"Executing full script {sql_file}...")
+                                    cursor.execute(sql_content)
+                                    logger.warning("Script executed successfully")
+                                except Exception as exc:
+                                    with open("/app/logs/seed_debug.log", "a") as dbg:
+                                        dbg.write(f"SQL Error in {sql_file}: {exc}\n")
+                                    logger.error(f"SQL Error in {sql_file}: {exc}")
+                                    raise # Re-raise to catch in outer loop
+                            
+                            db.commit()
+                            results["seeded"].append(sql_file)
+                        except Exception as se:
+                            results["errors"].append(f"Seed {sql_file}: {se}")
+
+                # 3. Re-seed agent cards
+                try:
+                    from src.mcps.agent_card_mcp import get_agent_card_mcp_server
+                    card_mcp = get_agent_card_mcp_server()
+                    agents_to_seed = {
+                        "Orchestrator": {"id": "00000000-0000-0000-0000-000000000101", "caps": ["orchestrate", "route", "message", "delegate"]},
+                        "Researcher":   {"id": "00000000-0000-0000-0000-000000000102", "caps": ["search", "retrieve", "analyze", "read_memory"]},
+                        "Executor":     {"id": "00000000-0000-0000-0000-000000000103", "caps": ["execute", "write", "delete", "network"]},
+                        "Monitor":      {"id": "00000000-0000-0000-0000-000000000104", "caps": ["audit", "observe", "alert", "report"]},
+                    }
+                    for name, data in agents_to_seed.items():
+                        card_mcp.issue_card(agent_id=data["id"], capabilities=data["caps"], issuer_id=agents_to_seed["Orchestrator"]["id"])
+                    results["seeded"].append("agent_cards")
+                except Exception as ce:
+                    results["errors"].append(f"Agent cards: {ce}")
+
+                # 4. Regenerate embeddings for memory documents
+                try:
+                    from src.mcps.memory_mcp import get_memory_mcp_server
+                    from src.database.models import MemoryDocument
+                    
+                    logger.info("Regenerating memory embeddings...")
+                    memory_server = get_memory_mcp_server()
+                    
+                    # Fetch all memory docs
+                    docs = db.execute(text("SELECT id, content FROM memory_documents")).fetchall()
+                    updated_count = 0
+                    
+                    for doc_id, content in docs:
+                        if content:
+                            # Generate real embedding
+                            embedding = memory_server._create_embedding(content)
+                            # Update in DB
+                            db.execute(
+                                text("UPDATE memory_documents SET embedding = :emb WHERE id = :id"),
+                                {"emb": str(embedding), "id": doc_id}
+                            )
+                            updated_count += 1
+                    
+                    db.commit()
+                    results["seeded"].append(f"embeddings_regenerated ({updated_count} docs)")
+                except Exception as em_err:
+                    results["errors"].append(f"Embedding regeneration: {em_err}")
+
+            return JSONResponse({
+                "status": "success",
+                "message": "Lab reset to clean state",
+                "details": results,
+            })
+        except Exception as e:
+            logger.exception(f"Lab reset failed: {e}")
+            return JSONResponse({"status": "error", "message": str(e), "details": results}, status_code=500)
+
+    @app.get("/threat-map")
+    async def get_threat_map():
+        """Get vulnerability catalog data for the Threat Map panel."""
+        # Hardcoded from the verified vulnerability catalog
+        threat_categories = [
+            {
+                "id": "IT", "name": "Identity & Trust", "color": "#ef4444",
+                "threats": [
+                    {"id": "IT-01", "name": "Identity Spoofing", "description": "Impersonate another user/agent via weak identity checks", "testable": True, "scenario": "s01"},
+                    {"id": "IT-02", "name": "Credential Impersonation", "description": "Impersonate endpoint requires only a reason string, no auth", "testable": True, "scenario": "s01"},
+                    {"id": "IT-03", "name": "Delegation Chain Depth", "description": "No limit on delegation chain depth allows privilege amplification", "testable": True, "scenario": "s01"},
+                    {"id": "IT-04", "name": "Permission Escalation", "description": "Delegation graph can be manipulated to escalate permissions", "testable": True, "scenario": "s01"},
+                    {"id": "IT-05", "name": "No Delegation Expiry", "description": "Delegations never expire by default", "testable": True, "scenario": "s05"},
+                    {"id": "IT-06", "name": "Weak Key Rotation", "description": "Manual key rotation with no revocation of old keys", "testable": True, "scenario": "s12"},
+                ]
+            },
+            {
+                "id": "M", "name": "Memory & RAG", "color": "#a855f7",
+                "threats": [
+                    {"id": "M-01", "name": "Content Injection", "description": "No content sanitization — malicious instructions accepted as memory", "testable": True, "scenario": "s02"},
+                    {"id": "M-02", "name": "Similarity Boost Manipulation", "description": "similarity_boost column lets attacker control retrieval rankings", "testable": True, "scenario": "s02"},
+                    {"id": "M-03", "name": "Cross-Agent Memory Access", "description": "Any agent can read/search any other agent's memory", "testable": True, "scenario": "s10"},
+                    {"id": "M-04", "name": "Unauthorized Memory Deletion", "description": "Any agent can delete any memory document without ACL", "testable": True, "scenario": "s02"},
+                    {"id": "M-05", "name": "Context Window Stuffing", "description": "No limit on context size returned to agent", "testable": True, "scenario": "s06"},
+                    {"id": "M-06", "name": "RAG Poisoning via Embed", "description": "Inject crafted documents that override legitimate knowledge", "testable": True, "scenario": "s02"},
+                ]
+            },
+            {
+                "id": "T", "name": "Tool Abuse", "color": "#f59e0b",
+                "threats": [
+                    {"id": "T-01", "name": "Parameter Injection", "description": "Tool parameters not validated — arbitrary SQL/commands", "testable": True, "scenario": "s04"},
+                    {"id": "T-02", "name": "Unsafe Command Execution", "description": "execute_command runs shell with no sandboxing", "testable": True, "scenario": "s04"},
+                    {"id": "T-03", "name": "SQL Injection via execute_sql", "description": "Raw SQL execution with no parameterization", "testable": True, "scenario": "s04"},
+                    {"id": "T-04", "name": "Tool Misuse via Prompt", "description": "Agent can be tricked to use tools in unintended ways", "testable": True, "scenario": "s04"},
+                    {"id": "T-05", "name": "No Tool Call Rate Limiting", "description": "Agents can call tools infinitely fast", "testable": True, "scenario": "s06"},
+                ]
+            },
+            {
+                "id": "C", "name": "Communication", "color": "#3b82f6",
+                "threats": [
+                    {"id": "C-01", "name": "Message Forgery", "description": "forge_message tool allows impersonating any agent", "testable": True, "scenario": "s03"},
+                    {"id": "C-02", "name": "Broadcast Interception", "description": "All broadcasts are plaintext, any agent can read", "testable": True, "scenario": "s03"},
+                    {"id": "C-03", "name": "No Message Integrity", "description": "Messages have no HMAC or signature verification", "testable": True, "scenario": "s03"},
+                    {"id": "C-04", "name": "Replay Attacks", "description": "No nonce/timestamp validation — messages can be replayed", "testable": True, "scenario": "s16"},
+                    {"id": "C-05", "name": "No Encryption", "description": "Messages stored and transmitted in plaintext", "testable": True, "scenario": "s03"},
+                ]
+            },
+            {
+                "id": "O", "name": "Orchestration", "color": "#10b981",
+                "threats": [
+                    {"id": "O-01", "name": "Workflow Hijacking", "description": "Redirect orchestration flow to malicious agent", "testable": True, "scenario": "s05"},
+                    {"id": "O-02", "name": "Trust Without Verification", "description": "Orchestrator trusts all A2A messages blindly", "testable": True, "scenario": "s05"},
+                    {"id": "O-03", "name": "Circular Delegation", "description": "No detection of circular delegation chains", "testable": True, "scenario": "s01"},
+                    {"id": "O-04", "name": "No Rate Limiting", "description": "Orchestrator can be flooded with requests", "testable": True, "scenario": "s06"},
+                ]
+            },
+            {
+                "id": "A", "name": "Autonomy", "color": "#ec4899",
+                "threats": [
+                    {"id": "A-01", "name": "Goal Manipulation", "description": "Agent goals stored as mutable app_data records", "testable": True, "scenario": "s11"},
+                    {"id": "A-02", "name": "Instruction Override", "description": "System prompt can be overridden via crafted input", "testable": True, "scenario": "s07"},
+                    {"id": "A-03", "name": "Agent-Driven Orchestration", "description": "Sub-agents can self-orchestrate without user approval", "testable": True, "scenario": "s17"},
+                    {"id": "A-04", "name": "Jailbreaking", "description": "LLM guardrails can be bypassed with prompt injection", "testable": True, "scenario": "s07"},
+                ]
+            },
+            {
+                "id": "IF", "name": "Infrastructure", "color": "#f97316",
+                "threats": [
+                    {"id": "IF-01", "name": "Unauthorized Infra Access", "description": "Executor runs commands without strong authorization", "testable": True, "scenario": "s08"},
+                    {"id": "IF-02", "name": "Container Escape Path", "description": "Infra MCP has access to host-level commands", "testable": True, "scenario": "s14"},
+                    {"id": "IF-03", "name": "Privilege Escalation", "description": "Executor can gain admin via delegation chain", "testable": True, "scenario": "s13"},
+                    {"id": "IF-04", "name": "Service Deployment Abuse", "description": "deploy_service has no approval workflow", "testable": True, "scenario": "s08"},
+                    {"id": "IF-05", "name": "Environment Variable Leak", "description": "Sensitive env vars stored as readable app_data", "testable": True, "scenario": "s12"},
+                ]
+            },
+            {
+                "id": "V", "name": "Visibility", "color": "#6366f1",
+                "threats": [
+                    {"id": "V-01", "name": "Audit Log Manipulation", "description": "logged column can be set to false to hide entries", "testable": True, "scenario": "s09"},
+                    {"id": "V-02", "name": "Detection Evasion", "description": "Attack patterns can avoid Monitor's detection rules", "testable": True, "scenario": "s15"},
+                    {"id": "V-03", "name": "Incomplete Audit Trail", "description": "Not all MCP tool calls are logged", "testable": True, "scenario": "s09"},
+                    {"id": "V-04", "name": "Monitor Blind Spots", "description": "Monitor only sees broadcasts, not direct messages", "testable": True, "scenario": "s15"},
+                    {"id": "V-05", "name": "Log Deletion", "description": "Audit logs can be deleted without authorization", "testable": True, "scenario": "s09"},
+                ]
+            },
+        ]
+
+        return JSONResponse({
+            "categories": threat_categories,
+            "total_threats": sum(len(c["threats"]) for c in threat_categories),
+            "total_categories": len(threat_categories),
+        })
 
     # Run server in background
     config = uvicorn.Config(

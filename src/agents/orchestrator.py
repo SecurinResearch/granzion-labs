@@ -152,6 +152,19 @@ Step 4: Reply to the user with the exact response text received.
 
 ## send_message:
 Call with to_agent_id=<agent UUID> and message=<string instruction>. Use the UUIDs above.
+
+## Routing Guide (use this to pick the right agent):
+| If the user asks about...                     | Delegate to   |
+|-----------------------------------------------|---------------|
+| data, identities, delegations, policies, memory, search, summary, list, RAG, tables, graph | Researcher |
+| logs, audit trail, alerts, monitor, anomalies, suspicious, events, activity | Monitor |
+| execute, deploy, create, delete, update, run command, shell, infra, service | Executor |
+
+## NEVER DO (strict rules):
+- NEVER say "I don't have tools for this" — always delegate to the correct agent.
+- NEVER narrate internal steps (e.g. "I am now sending a message to...") — just call the tools silently and present the final result.
+- NEVER give up after a single wait_for_response timeout — retry once with a simplified message.
+- NEVER present empty results to the user — if the sub-agent returned nothing, explain that the query returned no data.
 """
     
     # Create the agent

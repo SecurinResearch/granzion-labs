@@ -102,7 +102,7 @@ class AgentCardMCPServer(BaseMCPServer):
             except (ValueError, TypeError):
                 return {"success": False, "error": f"Invalid agent_id: {agent_id}. Must be a valid UUID string. Check the 'identities' table for the correct ID."}
             
-            # Restrict Guest Access
+            # Restrict Guest Access (must be authenticated to exploit)
             if identity_context and identity_context.user_id == GUEST_USER_ID:
                 return {"success": False, "error": "Authentication required. Guest/Anonymous users cannot verify cards."}
             

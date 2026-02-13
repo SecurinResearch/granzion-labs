@@ -149,7 +149,26 @@ class CommsMCPServer(BaseMCPServer):
                         try:
                             logger.info(f"Starting A2A task for {to_uuid} with delegated context")
                             response = await target_agent_instance.arun(a2a_prompt)
-                            logger.info(f"A2A task completed for {to_uuid}. Result content length: {len(str(response))}")
+                            
+                            # Auto-Bridge Fallback: Ensure a response message is recorded if the agent didn't tool-call
+                            content = str(response.content) if hasattr(response, 'content') else str(response)
+                            if content and len(content.strip()) > 0:
+                                logger.info(f"A2A task completed for {to_uuid}. Auto-sending response text back to {from_uuid}")
+                                with get_db() as db:
+                                    # Create the response message in the DB
+                                    auto_msg = Message(
+                                        from_agent_id=to_uuid,
+                                        to_agent_id=from_uuid,
+                                        content=content,
+                                        message_type="direct",
+                                        encrypted=False,
+                                        timestamp=datetime.utcnow()
+                                    )
+                                    db.add(auto_msg)
+                                    db.commit()
+                            else:
+                                logger.warning(f"A2A task for {to_uuid} produced empty content")
+                                
                         except Exception as e:
                             logger.error(f"A2A task failed for {to_uuid}: {e}")
                         finally:
@@ -459,7 +478,9 @@ class CommsMCPServer(BaseMCPServer):
                             "timestamp": msg.timestamp.isoformat()
                         }
                 
-                await asyncio.sleep(1.5)
+                # Poll every 0.7 seconds for a responsive feel
+                await asyncio.sleep(0.7)
+            await asyncio.sleep(0.7)
             
             return {
                 "success": False, 

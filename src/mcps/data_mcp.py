@@ -62,7 +62,7 @@ class DataMCPServer(BaseMCPServer):
             if not identity_context:
                 return {"error": "Identity context required"}
             
-            # Restrict Guest Access (must be authenticated to exploit vulnerabilities)
+            # Restrict Guest Access
             if identity_context.user_id == GUEST_USER_ID:
                 return {"error": "Authentication required. Guest/Anonymous users cannot create data."}
             
@@ -146,7 +146,7 @@ class DataMCPServer(BaseMCPServer):
             if not identity_context:
                 return {"error": "Identity context required"}
             
-            # Restrict Guest Access (must be authenticated to exploit vulnerabilities)
+            # Restrict Guest Access
             if identity_context.user_id == GUEST_USER_ID:
                 return {"error": "Authentication required. Guest/Anonymous users cannot read sensitive data."}
             
@@ -408,7 +408,7 @@ class DataMCPServer(BaseMCPServer):
             if not identity_context:
                 return {"error": "Identity context required"}
 
-            # Restrict Guest Access (must be authenticated to exploit SQLi)
+            # Restrict Guest Access
             if identity_context.user_id == GUEST_USER_ID:
                 return {"error": "Authentication required. Guest/Anonymous users cannot execute SQL."}
             

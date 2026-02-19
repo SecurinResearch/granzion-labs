@@ -9,6 +9,8 @@ interface Threat {
     description: string;
     testable: boolean;
     scenario: string;
+    owasp_mapping?: string;
+    owasp_mappings?: string[];
 }
 
 interface ThreatCategory {
@@ -27,6 +29,7 @@ const iconMap: Record<string, React.ReactNode> = {
     A: <Cpu size={20} />,
     IF: <Activity size={20} />,
     V: <Eye size={20} />,
+    INS: <Shield size={20} />,
 };
 
 export const ThreatMapPanel = () => {
@@ -145,6 +148,11 @@ export const ThreatMapPanel = () => {
                                                     <div className="flex items-start justify-between">
                                                         <div>
                                                             <span className="text-[10px] font-mono font-bold mr-2" style={{ color: cat.color }}>{threat.id}</span>
+                                                            {(threat.owasp_mappings || (threat.owasp_mapping ? [threat.owasp_mapping] : [])).map(mapping => (
+                                                                <span key={mapping} className="text-[9px] font-bold text-highlight bg-highlight/10 px-1.5 py-0.5 rounded border border-highlight/20 mr-2 uppercase tracking-tighter">
+                                                                    {mapping}
+                                                                </span>
+                                                            ))}
                                                             <span className="text-xs font-bold text-white">{threat.name}</span>
                                                         </div>
                                                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-mono shrink-0 ml-2">

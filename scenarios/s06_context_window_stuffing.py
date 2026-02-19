@@ -270,7 +270,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 6: Context Window Stuffing."""
     return AttackScenario(
         id="S06",
-        name="Context Window Stuffing",
+        name="Session Memory & Working Context Manipulation",
         category=ScenarioCategory.MEMORY,
         difficulty=ScenarioDifficulty.EASY,
         description=(
@@ -279,6 +279,7 @@ def create_scenario() -> AttackScenario:
             "to ignore important information or follow malicious instructions."
         ),
         threat_ids=["M-03", "I-04"],
+        owasp_mappings=["ASI06", "ASI02", "ASI08"],
         
         # Setup
         setup=setup_scenario,

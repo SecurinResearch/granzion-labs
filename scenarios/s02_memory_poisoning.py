@@ -261,7 +261,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 2: Memory Poisoning via RAG Injection."""
     return AttackScenario(
         id="S02",
-        name="Memory Poisoning via RAG Injection",
+        name="Knowledge Base & Vector Store Poisoning",
         category=ScenarioCategory.MEMORY,
         difficulty=ScenarioDifficulty.EASY,
         description=(
@@ -270,6 +270,7 @@ def create_scenario() -> AttackScenario:
             "with malicious content that ranks higher than legitimate documents."
         ),
         threat_ids=["M-01", "M-02", "I-01", "I-02"],
+        owasp_mappings=["ASI06"],
         
         # Setup
         setup=setup_scenario,

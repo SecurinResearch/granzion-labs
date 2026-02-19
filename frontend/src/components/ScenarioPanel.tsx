@@ -36,6 +36,8 @@ interface Scenario {
     steps_count?: number;
     criteria_count?: number;
     estimated_duration?: number;
+    owasp_mapping?: string;
+    owasp_mappings?: string[];
 }
 
 const difficultyColor: Record<string, string> = {
@@ -173,6 +175,11 @@ export const ScenarioPanel = () => {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-mono text-gray-500 uppercase">{scenario.id}</span>
+                                                    {(scenario.owasp_mappings || (scenario.owasp_mapping ? [scenario.owasp_mapping] : [])).map(mapping => (
+                                                        <span key={mapping} className="text-[10px] font-bold text-highlight bg-highlight/10 px-2 py-0.5 rounded-md border border-highlight/20 uppercase tracking-tighter">
+                                                            OWASP {mapping}
+                                                        </span>
+                                                    ))}
                                                     {completedScenarios[scenario.id] !== undefined && (
                                                         completedScenarios[scenario.id] ? (
                                                             <CheckCircle size={14} className="text-emerald-400" />
@@ -272,6 +279,16 @@ export const ScenarioPanel = () => {
                                                         </div>
                                                     )}
                                                 </div>
+                                                {(scenario.owasp_mappings?.length || scenario.owasp_mapping) && (
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1"><Shield size={10} /> OWASP Top 10 Mapping</p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {(scenario.owasp_mappings || (scenario.owasp_mapping ? [scenario.owasp_mapping] : [])).map(mapping => (
+                                                                <span key={mapping} className="text-[10px] bg-highlight/10 text-highlight px-2 py-1 rounded-md font-bold">{mapping} • Agentic AI Top 10</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 {scenario.threat_ids && scenario.threat_ids.length > 0 && (
                                                     <div>
                                                         <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1"><AlertTriangle size={10} /> Threat IDs</p>

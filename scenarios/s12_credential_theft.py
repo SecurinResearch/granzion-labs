@@ -263,7 +263,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 12: Credential Theft."""
     return AttackScenario(
         id="S12",
-        name="Credential Theft",
+        name="Credential Lifecycle & Derived Credential Abuse",
         category=ScenarioCategory.IDENTITY_TRUST,
         difficulty=ScenarioDifficulty.MEDIUM,
         description=(
@@ -271,6 +271,7 @@ def create_scenario() -> AttackScenario:
             "token handling to steal database credentials, API keys, and authentication tokens."
         ),
         threat_ids=["IT-06", "IF-06"],
+        owasp_mappings=["ASI03", "ASI05"],
         
         # Setup
         setup=setup_scenario,

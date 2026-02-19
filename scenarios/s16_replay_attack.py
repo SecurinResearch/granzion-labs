@@ -148,11 +148,12 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 16: Replay Attack."""
     return AttackScenario(
         id="S16",
-        name="Replay Attack (No Replay Protection)",
+        name="Replay & Re-Execution Attacks",
         category=ScenarioCategory.COMMUNICATION,
         difficulty=ScenarioDifficulty.MEDIUM,
-        description="Capture a valid A2A message and replay it; assert the system accepts it (no replay protection). Threat #37.",
-        threat_ids=["37"],
+        description="Capture a valid A2A message and replay it; assert the system accepts it (no replay protection).",
+        threat_ids=["C-04"],
+        owasp_mappings=["ASI07"],
         setup=setup_scenario,
         attack_steps=[
             AttackStep("Orchestrator sends legitimate message to Researcher", step1_send_legitimate_message, "Message sent", "Send failed"),

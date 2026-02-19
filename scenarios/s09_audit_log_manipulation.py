@@ -327,7 +327,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 9: Audit Log Manipulation."""
     return AttackScenario(
         id="S09",
-        name="Audit Log Manipulation",
+        name="Action Untraceability & Audit Gaps",
         category=ScenarioCategory.VISIBILITY,
         difficulty=ScenarioDifficulty.MEDIUM,
         description=(
@@ -335,6 +335,7 @@ def create_scenario() -> AttackScenario:
             "hiding malicious activity and creating false audit trails to frame another user."
         ),
         threat_ids=["V-01", "V-02"],
+        owasp_mappings=["ASI09"],
         
         # Setup
         setup=setup_scenario,

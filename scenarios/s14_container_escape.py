@@ -247,7 +247,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 14: Container Escape."""
     return AttackScenario(
         id="S14",
-        name="Container Escape",
+        name="Infrastructure & Runtime Compromise",
         category=ScenarioCategory.INFRASTRUCTURE,
         difficulty=ScenarioDifficulty.HARD,
         description=(
@@ -256,6 +256,7 @@ def create_scenario() -> AttackScenario:
             "and Docker socket."
         ),
         threat_ids=["IF-04", "IF-05"],
+        owasp_mappings=["ASI05"],
         
         # Setup
         setup=setup_scenario,

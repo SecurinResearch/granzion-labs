@@ -281,14 +281,15 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 7: Jailbreaking via LiteLLM."""
     return AttackScenario(
         id="S07",
-        name="Jailbreaking via LiteLLM",
+        name="Instruction-Level Jailbreaks",
         category=ScenarioCategory.INSTRUCTION,
         difficulty=ScenarioDifficulty.MEDIUM,
         description=(
             "Exploit the LiteLLM proxy to bypass model safety guardrails through "
             "prompt manipulation, model switching, or parameter tampering."
         ),
-        threat_ids=["I-03"],
+        threat_ids=["INS-04", "A-02"],
+        owasp_mappings=["ASI01", "ASI09", "ASI10"],
         
         # Setup
         setup=setup_scenario,

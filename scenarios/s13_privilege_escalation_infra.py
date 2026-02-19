@@ -277,7 +277,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 13: Privilege Escalation via Infrastructure."""
     return AttackScenario(
         id="S13",
-        name="Privilege Escalation via Infrastructure",
+        name="Infrastructure & Runtime Compromise",
         category=ScenarioCategory.INFRASTRUCTURE,
         difficulty=ScenarioDifficulty.HARD,
         description=(
@@ -286,6 +286,7 @@ def create_scenario() -> AttackScenario:
             "allowing a low-privilege user to gain admin-level access."
         ),
         threat_ids=["IF-01", "IF-02", "IF-05", "T-05"],
+        owasp_mappings=["ASI05"],
         
         # Setup
         setup=setup_scenario,

@@ -252,7 +252,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 8: Unauthorized Infrastructure Actions."""
     return AttackScenario(
         id="S08",
-        name="Unauthorized Infrastructure Actions",
+        name="Infrastructure & Runtime Compromise",
         category=ScenarioCategory.INFRASTRUCTURE,
         difficulty=ScenarioDifficulty.MEDIUM,
         description=(
@@ -261,6 +261,7 @@ def create_scenario() -> AttackScenario:
             "resource abuse, despite user having only read permissions."
         ),
         threat_ids=["IF-02", "A-02", "A-05", "T-03"],
+        owasp_mappings=["ASI05", "ASI04"],
         
         # Setup
         setup=setup_scenario,

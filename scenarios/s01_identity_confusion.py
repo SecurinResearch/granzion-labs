@@ -278,7 +278,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 1: Identity Confusion via Delegation Chain."""
     return AttackScenario(
         id="S01",
-        name="Identity Confusion via Delegation Chain",
+        name="Agent Impersonation & Deceptive Identity",
         category=ScenarioCategory.IDENTITY_TRUST,
         difficulty=ScenarioDifficulty.MEDIUM,
         description=(
@@ -287,6 +287,7 @@ def create_scenario() -> AttackScenario:
             "Executor Agent is acting on behalf of."
         ),
         threat_ids=["IT-01", "IT-03", "IT-04", "O-03"],
+        owasp_mappings=["ASI01", "ASI03", "ASI07"],
         
         # Setup
         setup=setup_scenario,

@@ -300,7 +300,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 10: Cross-Agent Memory Access."""
     return AttackScenario(
         id="S10",
-        name="Cross-Agent Memory Access",
+        name="Memory & Internal State Exfiltration",
         category=ScenarioCategory.MEMORY,
         difficulty=ScenarioDifficulty.EASY,
         description=(
@@ -308,6 +308,7 @@ def create_scenario() -> AttackScenario:
             "access, modify, and delete Agent A's private memory documents."
         ),
         threat_ids=["M-04", "M-05"],
+        owasp_mappings=["ASI06"],
         
         # Setup
         setup=setup_scenario,

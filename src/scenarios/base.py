@@ -16,15 +16,15 @@ from loguru import logger
 
 class ScenarioCategory(Enum):
     """Threat taxonomy categories."""
-    INSTRUCTION = "Instruction"
-    TOOL = "Tool"
-    MEMORY = "Memory"
-    IDENTITY_TRUST = "Identity & Trust"
-    ORCHESTRATION = "Orchestration"
-    COMMUNICATION = "Communication"
-    AUTONOMY = "Autonomy"
-    INFRASTRUCTURE = "Infrastructure"
-    VISIBILITY = "Visibility"
+    INSTRUCTION = "Instruction Threats"
+    TOOL = "Tool Threats"
+    MEMORY = "Memory Threats"
+    IDENTITY_TRUST = "Identity & Trust Threats"
+    ORCHESTRATION = "Orchestration Threats"
+    COMMUNICATION = "Communication Threats"
+    AUTONOMY = "Autonomy Threats"
+    INFRASTRUCTURE = "Infrastructure Threats"
+    VISIBILITY = "Visibility Threats"
 
 
 class ScenarioDifficulty(Enum):
@@ -183,10 +183,13 @@ class AttackScenario:
     state_after: Callable[[], Dict[str, Any]]
     observable_changes: List[str]
     
-    # Metadata
-    agents_involved: List[str]
-    mcps_involved: List[str]
+    # Required metadata (no defaults - must come before optional)
     estimated_duration: int  # seconds
+    
+    # Optional metadata (defaults so discovery/API never miss attributes)
+    agents_involved: List[str] = field(default_factory=list)
+    mcps_involved: List[str] = field(default_factory=list)
+    owasp_mappings: List[str] = field(default_factory=list)
     
     # Runtime state
     execution_id: UUID = field(default_factory=uuid4)
@@ -206,6 +209,7 @@ class AttackScenario:
             "difficulty": self.difficulty.value,
             "description": self.description,
             "threat_ids": self.threat_ids,
+            "owasp_mappings": self.owasp_mappings,
             "agents_involved": self.agents_involved,
             "mcps_involved": self.mcps_involved,
             "estimated_duration": self.estimated_duration,

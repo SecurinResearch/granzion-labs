@@ -30,32 +30,42 @@ SCENARIO_SCHEMA = {
         "mcps_involved": {"type": "array", "items": {"type": "string"}},
         "estimated_duration": {"type": "integer", "minimum": 1},
         "observable_changes": {"type": "array", "items": {"type": "string"}},
+        "owasp_mappings": {"type": "array", "items": {"type": "string"}},
     }
 }
 
 
-def discover_scenarios(scenarios_dir: str = "scenarios") -> List[AttackScenario]:
+def discover_scenarios(scenarios_dir: Optional[str] = None) -> List[AttackScenario]:
     """
     Auto-discover attack scenarios from the scenarios directory.
-    
+
     Scenarios can be defined as:
     1. Python modules with a `create_scenario()` function
     2. JSON files with scenario metadata (for future use)
-    
+
+    When scenarios_dir is not provided, uses the "scenarios" folder next to the
+    project root (parent of src/), so discovery works regardless of current
+    working directory.
+
     Args:
-        scenarios_dir: Directory containing scenario definitions
-        
+        scenarios_dir: Directory containing scenario definitions (default: resolved from package location)
+
     Returns:
         List of discovered AttackScenario instances
     """
     scenarios = []
-    scenarios_path = Path(scenarios_dir)
-    
+    if scenarios_dir is None:
+        # Resolve relative to package: .../src/scenarios/discovery.py -> .../scenarios
+        _base = Path(__file__).resolve().parent.parent.parent
+        scenarios_path = _base / "scenarios"
+    else:
+        scenarios_path = Path(scenarios_dir)
+
     if not scenarios_path.exists():
-        logger.warning(f"Scenarios directory not found: {scenarios_dir}")
+        logger.warning(f"Scenarios directory not found: {scenarios_path}")
         return scenarios
     
-    logger.info(f"Discovering scenarios in: {scenarios_dir}")
+    logger.info(f"Discovering scenarios in: {scenarios_path}")
     
     # Discover Python scenario modules
     for file_path in scenarios_path.glob("*.py"):
@@ -216,13 +226,7 @@ def validate_scenario_schema(scenario: AttackScenario) -> List[str]:
         if not callable(criterion.evidence):
             errors.append(f"Criterion {i+1} evidence must be callable")
     
-    # Metadata
-    if not scenario.agents_involved:
-        errors.append("Scenario must specify agents_involved")
-    
-    if not scenario.mcps_involved:
-        errors.append("Scenario must specify mcps_involved")
-    
+    # Metadata (agents_involved / mcps_involved are optional; allow empty for display)
     if scenario.estimated_duration <= 0:
         errors.append("estimated_duration must be positive")
     

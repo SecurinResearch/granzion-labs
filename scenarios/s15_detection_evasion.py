@@ -320,7 +320,7 @@ def create_scenario() -> AttackScenario:
     """Create Scenario 15: Detection Evasion."""
     return AttackScenario(
         id="S15",
-        name="Detection Evasion",
+        name="Gradual & Coordinated Compromise Invisibility",
         category=ScenarioCategory.VISIBILITY,
         difficulty=ScenarioDifficulty.HARD,
         description=(
@@ -329,6 +329,7 @@ def create_scenario() -> AttackScenario:
             "and timing attacks."
         ),
         threat_ids=["V-01", "V-03", "V-04", "V-05"],
+        owasp_mappings=["ASI09"],
         
         # Setup
         setup=setup_scenario,

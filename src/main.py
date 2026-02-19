@@ -125,24 +125,35 @@ async def check_services():
     logger.info("Checking LiteLLM...")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Use x-litellm-api-key header for this specific proxy
-            headers = {"x-litellm-api-key": settings.litellm_api_key}
+            # Try both header styles
+            headers = {
+                "x-litellm-api-key": settings.litellm_api_key,
+                "Authorization": f"Bearer {settings.litellm_api_key}"
+            }
             
-            # Try /health, then root /
-            try:
-                resp = await client.get(f"{settings.litellm_url}/health", headers=headers)
-                if resp.status_code == 404:
-                    resp = await client.get(f"{settings.litellm_url}/", headers=headers)
-            except:
-                # If /health fails connection, try root
-                resp = await client.get(f"{settings.litellm_url}/", headers=headers)
+            # Try multiple paths: /health, /v1/health, /v1, and /
+            health_paths = ["/health", "/v1/health", "/v1", "/"]
+            litellm_healthy = False
+            last_status = 0
+            
+            for path in health_paths:
+                try:
+                    url = f"{settings.litellm_url.rstrip('/')}{path}"
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code == 200:
+                        litellm_healthy = True
+                        break
+                    last_status = resp.status_code
+                except Exception:
+                    continue
 
-            if resp.status_code == 200:
+            if litellm_healthy:
                 services_status["litellm"] = "healthy"
                 logger.info("✓ LiteLLM is healthy")
             else:
-                services_status["litellm"] = f"unhealthy (status: {resp.status_code})"
-                logger.warning(f"⚠ LiteLLM returned status {resp.status_code}")
+                # Fallback: check if we can reach it at least
+                services_status["litellm"] = f"unhealthy (status: {last_status})"
+                logger.warning(f"⚠ LiteLLM returned status {last_status}")
     except httpx.ConnectError:
         services_status["litellm"] = "not_reachable"
         logger.warning("⚠ LiteLLM not reachable (check LITELLM_URL)")
@@ -811,20 +822,23 @@ async def start_api_server():
             discovered = _disc()
             difficulty_map = {"Easy": 1, "Medium": 2, "Hard": 3}
             for s in discovered:
+                owasp = getattr(s, "owasp_mappings", None) or []
                 scenarios.append({
                     "id": s.id.lower(),
                     "name": s.name,
-                    "description": s.description,
-                    "threat_category": s.category.value,
-                    "complexity": difficulty_map.get(s.difficulty.value, 2),
-                    "difficulty": s.difficulty.value,
-                    "agents_involved": s.agents_involved,
-                    "mcps_involved": s.mcps_involved,
-                    "observable_changes": s.observable_changes,
-                    "estimated_duration": s.estimated_duration,
-                    "threat_ids": s.threat_ids,
-                    "steps_count": len(s.attack_steps),
-                    "criteria_count": len(s.success_criteria),
+                    "description": getattr(s, "description", "") or "",
+                    "threat_category": getattr(s.category, "value", "Unknown"),
+                    "complexity": difficulty_map.get(getattr(s.difficulty, "value", "Medium"), 2),
+                    "difficulty": getattr(s.difficulty, "value", "Medium"),
+                    "agents_involved": getattr(s, "agents_involved", []) or [],
+                    "mcps_involved": getattr(s, "mcps_involved", []) or [],
+                    "observable_changes": getattr(s, "observable_changes", []) or [],
+                    "estimated_duration": getattr(s, "estimated_duration", 0) or 0,
+                    "threat_ids": getattr(s, "threat_ids", []) or [],
+                    "steps_count": len(getattr(s, "attack_steps", [])),
+                    "criteria_count": len(getattr(s, "success_criteria", [])),
+                    "owasp_mappings": owasp,
+                    "owasp_mapping": owasp[0] if owasp else None,
                 })
         except Exception as disc_err:
             logger.warning(f"Engine discovery failed, falling back to filenames: {disc_err}")
@@ -845,6 +859,15 @@ async def start_api_server():
                                     "threat_category": "Unknown",
                                     "complexity": 2,
                                     "difficulty": "Medium",
+                                    "agents_involved": [],
+                                    "mcps_involved": [],
+                                    "observable_changes": [],
+                                    "estimated_duration": 0,
+                                    "threat_ids": [],
+                                    "steps_count": 0,
+                                    "criteria_count": 0,
+                                    "owasp_mappings": [],
+                                    "owasp_mapping": None,
                                 })
             except Exception:
                 pass
@@ -1156,83 +1179,92 @@ async def start_api_server():
         # Hardcoded from the verified vulnerability catalog
         threat_categories = [
             {
-                "id": "IT", "name": "Identity & Trust", "color": "#ef4444",
+                "id": "IT", "name": "Identity & Trust Threats", "color": "#ef4444",
                 "threats": [
-                    {"id": "IT-01", "name": "Identity Spoofing", "description": "Impersonate another user/agent via weak identity checks", "testable": True, "scenario": "s01"},
-                    {"id": "IT-02", "name": "Credential Impersonation", "description": "Impersonate endpoint requires only a reason string, no auth", "testable": True, "scenario": "s01"},
-                    {"id": "IT-03", "name": "Delegation Chain Depth", "description": "No limit on delegation chain depth allows privilege amplification", "testable": True, "scenario": "s01"},
-                    {"id": "IT-04", "name": "Permission Escalation", "description": "Delegation graph can be manipulated to escalate permissions", "testable": True, "scenario": "s01"},
-                    {"id": "IT-05", "name": "No Delegation Expiry", "description": "Delegations never expire by default", "testable": True, "scenario": "s05"},
-                    {"id": "IT-06", "name": "Weak Key Rotation", "description": "Manual key rotation with no revocation of old keys", "testable": True, "scenario": "s12"},
+                    {"id": "IT-01", "name": "Agent Impersonation & Deceptive Identity", "description": "Impersonate another user/agent via weak identity checks", "testable": True, "scenario": "s01", "owasp_mapping": "ASI03"},
+                    {"id": "IT-02", "name": "Authentication Mechanism Failures", "description": "Impersonate endpoint requires only a reason string, no auth", "testable": True, "scenario": "s01", "owasp_mapping": "ASI03"},
+                    {"id": "IT-03", "name": "Implicit Trust & Lateral Trust Propagation", "description": "No limit on delegation chain depth allows privilege amplification", "testable": True, "scenario": "s01", "owasp_mapping": "ASI07"},
+                    {"id": "IT-04", "name": "Authorization & Role Enforcement Failures", "description": "Delegation graph can be manipulated to escalate permissions", "testable": True, "scenario": "s01", "owasp_mapping": "ASI03"},
+                    {"id": "IT-05", "name": "Overbroad Consent & Approval Bypass", "description": "Delegations never expire by default", "testable": True, "scenario": "s05", "owasp_mapping": "ASI09"},
+                    {"id": "IT-06", "name": "Credential Lifecycle & Derived Credential Abuse", "description": "Manual key rotation with no revocation of old keys", "testable": True, "scenario": "s12", "owasp_mapping": "ASI03"},
                 ]
             },
             {
-                "id": "M", "name": "Memory & RAG", "color": "#a855f7",
+                "id": "M", "name": "Memory Threats", "color": "#a855f7",
                 "threats": [
-                    {"id": "M-01", "name": "Content Injection", "description": "No content sanitization — malicious instructions accepted as memory", "testable": True, "scenario": "s02"},
-                    {"id": "M-02", "name": "Similarity Boost Manipulation", "description": "similarity_boost column lets attacker control retrieval rankings", "testable": True, "scenario": "s02"},
-                    {"id": "M-03", "name": "Cross-Agent Memory Access", "description": "Any agent can read/search any other agent's memory", "testable": True, "scenario": "s10"},
-                    {"id": "M-04", "name": "Unauthorized Memory Deletion", "description": "Any agent can delete any memory document without ACL", "testable": True, "scenario": "s02"},
-                    {"id": "M-05", "name": "Context Window Stuffing", "description": "No limit on context size returned to agent", "testable": True, "scenario": "s06"},
-                    {"id": "M-06", "name": "RAG Poisoning via Embed", "description": "Inject crafted documents that override legitimate knowledge", "testable": True, "scenario": "s02"},
+                    {"id": "M-01", "name": "Persistent Memory Poisoning", "description": "No content sanitization — malicious instructions accepted as memory", "testable": True, "scenario": "s02", "owasp_mapping": "ASI06"},
+                    {"id": "M-02", "name": "Knowledge Base & Vector Store Poisoning", "description": "similarity_boost column lets attacker control retrieval rankings", "testable": True, "scenario": "s02", "owasp_mapping": "ASI06"},
+                    {"id": "M-03", "name": "Memory & Internal State Exfiltration", "description": "Any agent can read/search any other agent's memory", "testable": True, "scenario": "s10", "owasp_mapping": "ASI06"},
+                    {"id": "M-04", "name": "Session Memory & Working Context Manipulation", "description": "Any agent can delete any memory document without ACL", "testable": True, "scenario": "s02", "owasp_mapping": "ASI06"},
+                    {"id": "M-05", "name": "Context Window Exposure", "description": "No limit on context size returned to agent", "testable": True, "scenario": "s06", "owasp_mapping": "ASI06"},
+                    {"id": "M-06", "name": "Cross-Session Context Contamination", "description": "Inject crafted documents that override legitimate knowledge", "testable": True, "scenario": "s02", "owasp_mapping": "ASI06"},
                 ]
             },
             {
-                "id": "T", "name": "Tool Abuse", "color": "#f59e0b",
+                "id": "T", "name": "Tool Threats", "color": "#f59e0b",
                 "threats": [
-                    {"id": "T-01", "name": "Parameter Injection", "description": "Tool parameters not validated — arbitrary SQL/commands", "testable": True, "scenario": "s04"},
-                    {"id": "T-02", "name": "Unsafe Command Execution", "description": "execute_command runs shell with no sandboxing", "testable": True, "scenario": "s04"},
-                    {"id": "T-03", "name": "SQL Injection via execute_sql", "description": "Raw SQL execution with no parameterization", "testable": True, "scenario": "s04"},
-                    {"id": "T-04", "name": "Tool Misuse via Prompt", "description": "Agent can be tricked to use tools in unintended ways", "testable": True, "scenario": "s04"},
-                    {"id": "T-05", "name": "No Tool Call Rate Limiting", "description": "Agents can call tools infinitely fast", "testable": True, "scenario": "s06"},
+                    {"id": "T-01", "name": "Unsafe Tool Parameterization & Execution", "description": "Tool parameters not validated — arbitrary SQL/commands", "testable": True, "scenario": "s04", "owasp_mapping": "ASI02"},
+                    {"id": "T-02", "name": "Unauthorized Tool Invocation", "description": "execute_command runs shell with no sandboxing", "testable": True, "scenario": "s04", "owasp_mapping": "ASI02"},
+                    {"id": "T-03", "name": "Tool Schema Exposure & Poisoning", "description": "Raw SQL execution with no parameterization", "testable": True, "scenario": "s04", "owasp_mapping": "ASI04"},
+                    {"id": "T-04", "name": "Tool-Based Data & Credential Exfiltration", "description": "Agent can be tricked to use tools in unintended ways", "testable": True, "scenario": "s04", "owasp_mapping": "ASI02"},
+                    {"id": "T-05", "name": "Over-Privileged & High-Impact Tool Access", "description": "Agents can call tools infinitely fast", "testable": True, "scenario": "s06", "owasp_mapping": "ASI02"},
                 ]
             },
             {
-                "id": "C", "name": "Communication", "color": "#3b82f6",
+                "id": "C", "name": "Communication Threats", "color": "#3b82f6",
                 "threats": [
-                    {"id": "C-01", "name": "Message Forgery", "description": "forge_message tool allows impersonating any agent", "testable": True, "scenario": "s03"},
-                    {"id": "C-02", "name": "Broadcast Interception", "description": "All broadcasts are plaintext, any agent can read", "testable": True, "scenario": "s03"},
-                    {"id": "C-03", "name": "No Message Integrity", "description": "Messages have no HMAC or signature verification", "testable": True, "scenario": "s03"},
-                    {"id": "C-04", "name": "Replay Attacks", "description": "No nonce/timestamp validation — messages can be replayed", "testable": True, "scenario": "s16"},
-                    {"id": "C-05", "name": "No Encryption", "description": "Messages stored and transmitted in plaintext", "testable": True, "scenario": "s03"},
+                    {"id": "C-01", "name": "Inter-Agent Message Manipulation & Injection", "description": "forge_message tool allows impersonating any agent", "testable": True, "scenario": "s03", "owasp_mapping": "ASI07"},
+                    {"id": "C-02", "name": "Trust Boundary Confusion in Communication", "description": "All broadcasts are plaintext, any agent can read", "testable": True, "scenario": "s03", "owasp_mapping": "ASI07"},
+                    {"id": "C-03", "name": "Session & Token Compromise", "description": "Messages have no HMAC or signature verification", "testable": True, "scenario": "s03", "owasp_mapping": "ASI03"},
+                    {"id": "C-04", "name": "Replay & Re-Execution Attacks", "description": "No nonce/timestamp validation — messages can be replayed", "testable": True, "scenario": "s16", "owasp_mapping": "ASI07"},
+                    {"id": "C-05", "name": "Decentralized Peer Coordination Abuse", "description": "Messages stored and transmitted in plaintext", "testable": True, "scenario": "s03", "owasp_mapping": "ASI08"},
                 ]
             },
             {
-                "id": "O", "name": "Orchestration", "color": "#10b981",
+                "id": "O", "name": "Orchestration Threats", "color": "#10b981",
                 "threats": [
-                    {"id": "O-01", "name": "Workflow Hijacking", "description": "Redirect orchestration flow to malicious agent", "testable": True, "scenario": "s05"},
-                    {"id": "O-02", "name": "Trust Without Verification", "description": "Orchestrator trusts all A2A messages blindly", "testable": True, "scenario": "s05"},
-                    {"id": "O-03", "name": "Circular Delegation", "description": "No detection of circular delegation chains", "testable": True, "scenario": "s01"},
-                    {"id": "O-04", "name": "No Rate Limiting", "description": "Orchestrator can be flooded with requests", "testable": True, "scenario": "s06"},
+                    {"id": "O-01", "name": "Task Delegation & Workflow Corruption", "description": "Redirect orchestration flow to malicious agent", "testable": True, "scenario": "s05", "owasp_mapping": "ASI08"},
+                    {"id": "O-02", "name": "Delegated Trust Chain Abuse", "description": "Orchestrator trusts all A2A messages blindly", "testable": True, "scenario": "s05", "owasp_mapping": "ASI07"},
+                    {"id": "O-03", "name": "Agent Selection & Capability Manipulation", "description": "No detection of circular delegation chains", "testable": True, "scenario": "s01", "owasp_mapping": "ASI01"},
+                    {"id": "O-04", "name": "Impact Chain & Blast Radius Amplification", "description": "Orchestrator can be flooded with requests", "testable": True, "scenario": "s06", "owasp_mapping": "ASI08"},
                 ]
             },
             {
-                "id": "A", "name": "Autonomy", "color": "#ec4899",
+                "id": "A", "name": "Autonomy Threats", "color": "#ec4899",
                 "threats": [
-                    {"id": "A-01", "name": "Goal Manipulation", "description": "Agent goals stored as mutable app_data records", "testable": True, "scenario": "s11"},
-                    {"id": "A-02", "name": "Instruction Override", "description": "System prompt can be overridden via crafted input", "testable": True, "scenario": "s07"},
-                    {"id": "A-03", "name": "Agent-Driven Orchestration", "description": "Sub-agents can self-orchestrate without user approval", "testable": True, "scenario": "s17"},
-                    {"id": "A-04", "name": "Jailbreaking", "description": "LLM guardrails can be bypassed with prompt injection", "testable": True, "scenario": "s07"},
+                    {"id": "A-01", "name": "Rogue Autonomous Behavior", "description": "Agent goals stored as mutable app_data records", "testable": True, "scenario": "s11", "owasp_mapping": "ASI10"},
+                    {"id": "A-02", "name": "Safety & Post-Decision Control Bypass", "description": "System prompt can be overridden via crafted input", "testable": True, "scenario": "s07", "owasp_mapping": "ASI09"},
+                    {"id": "A-03", "name": "Adaptive & Escalating Autonomy", "description": "Sub-agents can self-orchestrate without user approval", "testable": True, "scenario": "s17", "owasp_mapping": "ASI10"},
+                    {"id": "A-04", "name": "Asynchronous & Dormant Autonomy", "description": "LLM guardrails can be bypassed with prompt injection", "testable": True, "scenario": "s07", "owasp_mapping": "ASI10"},
                 ]
             },
             {
-                "id": "IF", "name": "Infrastructure", "color": "#f97316",
+                "id": "IF", "name": "Infrastructure Threats", "color": "#f97316",
                 "threats": [
-                    {"id": "IF-01", "name": "Unauthorized Infra Access", "description": "Executor runs commands without strong authorization", "testable": True, "scenario": "s08"},
-                    {"id": "IF-02", "name": "Container Escape Path", "description": "Infra MCP has access to host-level commands", "testable": True, "scenario": "s14"},
-                    {"id": "IF-03", "name": "Privilege Escalation", "description": "Executor can gain admin via delegation chain", "testable": True, "scenario": "s13"},
-                    {"id": "IF-04", "name": "Service Deployment Abuse", "description": "deploy_service has no approval workflow", "testable": True, "scenario": "s08"},
-                    {"id": "IF-05", "name": "Environment Variable Leak", "description": "Sensitive env vars stored as readable app_data", "testable": True, "scenario": "s12"},
+                    {"id": "IF-01", "name": "Infrastructure & Runtime Compromise", "description": "Executor runs commands without strong authorization", "testable": True, "scenario": "s08", "owasp_mapping": "ASI05"},
+                    {"id": "IF-02", "name": "Network & Routing Manipulation", "description": "Infra MCP has access to host-level commands", "testable": True, "scenario": "s14", "owasp_mapping": "ASI05"},
+                    {"id": "IF-03", "name": "Protocol & Cross-Boundary Exploitation", "description": "Executor can gain admin via delegation chain", "testable": True, "scenario": "s13", "owasp_mapping": "ASI05"},
+                    {"id": "IF-04", "name": "Supply Chain & Artifact Compromise", "description": "deploy_service has no approval workflow", "testable": True, "scenario": "s08", "owasp_mapping": "ASI04"},
+                    {"id": "IF-05", "name": "Resource Exhaustion & Denial of Service", "description": "Sensitive env vars stored as readable app_data", "testable": True, "scenario": "s12", "owasp_mapping": "ASI05"},
                 ]
             },
             {
-                "id": "V", "name": "Visibility", "color": "#6366f1",
+                "id": "V", "name": "Visibility Threats", "color": "#6366f1",
                 "threats": [
-                    {"id": "V-01", "name": "Audit Log Manipulation", "description": "logged column can be set to false to hide entries", "testable": True, "scenario": "s09"},
-                    {"id": "V-02", "name": "Detection Evasion", "description": "Attack patterns can avoid Monitor's detection rules", "testable": True, "scenario": "s15"},
-                    {"id": "V-03", "name": "Incomplete Audit Trail", "description": "Not all MCP tool calls are logged", "testable": True, "scenario": "s09"},
-                    {"id": "V-04", "name": "Monitor Blind Spots", "description": "Monitor only sees broadcasts, not direct messages", "testable": True, "scenario": "s15"},
-                    {"id": "V-05", "name": "Log Deletion", "description": "Audit logs can be deleted without authorization", "testable": True, "scenario": "s09"},
+                    {"id": "V-01", "name": "Action Untraceability & Audit Gaps", "description": "logged column can be set to false to hide entries", "testable": True, "scenario": "s09", "owasp_mapping": "ASI09"},
+                    {"id": "V-02", "name": "Opaque Decision-Making & Reasoning Blindness", "description": "Attack patterns can avoid Monitor's detection rules", "testable": True, "scenario": "s15", "owasp_mapping": "ASI09"},
+                    {"id": "V-03", "name": "Gradual & Coordinated Compromise Invisibility", "description": "Not all MCP tool calls are logged", "testable": True, "scenario": "s09", "owasp_mapping": "ASI09"},
+                    {"id": "V-04", "name": "Sensitive Data Exposure Without Detection", "description": "Monitor only sees broadcasts, not direct messages", "testable": True, "scenario": "s15", "owasp_mapping": "ASI09"},
+                    {"id": "V-05", "name": "Cross-Protocol & Lifecycle Visibility Gaps", "description": "Audit logs can be deleted without authorization", "testable": True, "scenario": "s09", "owasp_mapping": "ASI09"},
+                ]
+            },
+            {
+                "id": "INS", "name": "Instruction Threats", "color": "#fbbf24",
+                "threats": [
+                    {"id": "INS-01", "name": "Goal & Mission Manipulation", "description": "Direct or gradual corruption of an agent’s intended objective", "testable": True, "scenario": "s11", "owasp_mapping": "ASI01"},
+                    {"id": "INS-02", "name": "Prompt Injection (Direct & Indirect)", "description": "Injection of malicious instructions through trusted interfaces", "testable": True, "scenario": "s02", "owasp_mapping": "ASI01"},
+                    {"id": "INS-03", "name": "Semantic & Interpretive Exploitation", "description": "Exploiting ambiguity in natural language for manipulation", "testable": True, "scenario": "s11", "owasp_mapping": "ASI01"},
+                    {"id": "INS-04", "name": "Instruction-Level Jailbreaks", "description": "Constraint-breaking payloads in configuration data", "testable": True, "scenario": "s07", "owasp_mapping": "ASI01"},
                 ]
             },
         ]

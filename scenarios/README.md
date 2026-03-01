@@ -84,6 +84,12 @@ scenario = AttackScenario(
 ### Orchestration (Category 5) — Agent-driven
 - **S17**: Agent-Driven Orchestration (Research Flow) — *prompt → API → agent → assert state*
 
+### Identity & Trust (Category 4) — Token Forgery
+- **S18**: Token Forgery & JWT Manipulation — *forge JWT → impersonate admin → execute privileged actions*
+
+### Identity & Trust (Category 4) — Agent Card Forgery
+- **S19**: Agent Card Forgery & Trust Chain Attack — *issue fake card → pass verification → execute admin actions*
+
 ## Agent-driven vs direct MCP/DB
 
 - **Agent-driven**: Scenario sends a prompt to an agent via the API (`POST /agents/{id}/run`), then asserts on DB/audit/messages. Proves the vulnerability is exploitable *through the agent*.

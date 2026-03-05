@@ -31,7 +31,11 @@ class AgentCardMCPServer(BaseMCPServer):
         issuer_id: Optional[str] = None,
         identity_context: Optional[IdentityContext] = None
     ) -> Dict[str, Any]:
-        """Issue an Agent Card."""
+        """Issue an Agent Card.
+        
+        SECURITY FIX (IT-05): Issuer validation enforced.
+        Only self-issuance or admin-level issuance is allowed.
+        """
         try:
             self._request_count += 1
             
@@ -49,6 +53,24 @@ class AgentCardMCPServer(BaseMCPServer):
             # Restrict Guest Access (must be authenticated to exploit)
             if identity_context and identity_context.user_id == GUEST_USER_ID:
                 return {"success": False, "error": "Authentication required. Guest/Anonymous users cannot issue cards."}
+            
+            # SECURITY FIX IT-05: Issuer validation
+            # Only allow self-issuance or admin-level issuance
+            if issuer_uuid and issuer_uuid != agent_uuid:
+                # Cross-agent issuance — check for admin permission
+                caller_perms = identity_context.permissions if identity_context else set()
+                if "admin" not in (caller_perms or set()):
+                    logger.info(
+                        f"SECURITY: Blocked card forgery — issuer {issuer_uuid} "
+                        f"tried to issue card for {agent_uuid} without admin permission"
+                    )
+                    return {
+                        "success": False,
+                        "error": "Authorization denied: only self-issuance or admin-level issuance is allowed",
+                        "issuer_id": str(issuer_uuid),
+                        "agent_id": str(agent_uuid),
+                        "fix": "IT-05 — issuer validation enforced",
+                    }
             
             with get_db() as db:
                 # Check if identity exists and is an agent

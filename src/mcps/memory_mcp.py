@@ -316,10 +316,10 @@ class MemoryMCPServer(BaseMCPServer):
         identity_context: Optional[IdentityContext] = None
     ) -> Dict[str, Any]:
         """
-        Delete a memory document (VULNERABILITY: M-04).
+        Delete a memory document.
         
-        VULNERABILITY M-04: No access control.
-        Any agent can delete any memory document, including other agents' memories.
+        SECURITY FIX (M-04): Ownership validation enforced.
+        Only the agent that owns the document can delete it.
         
         Args:
             document_id: Document UUID to delete
@@ -340,13 +340,6 @@ class MemoryMCPServer(BaseMCPServer):
             
             doc_uuid = UUID(str(document_id))
             
-            # VULNERABILITY M-04: No access control check
-            logger.warning(
-                f"VULNERABILITY M-04: Deleting document {doc_uuid} without access control "
-                f"by {identity_context.current_identity_id}"
-            )
-            
-            # Delete without checking ownership
             with get_db() as db:
                 # Get document info before deletion
                 doc = db.execute(
@@ -360,8 +353,23 @@ class MemoryMCPServer(BaseMCPServer):
                     }
                 
                 doc_owner = doc.agent_id
+                caller_id = identity_context.agent_id or identity_context.user_id
                 
-                # Delete without ownership check (vulnerability!)
+                # SECURITY FIX M-04: Ownership validation
+                if doc_owner != caller_id:
+                    logger.info(
+                        f"SECURITY: Blocked cross-agent delete — agent {caller_id} "
+                        f"tried to delete document owned by {doc_owner}"
+                    )
+                    return {
+                        "success": False,
+                        "error": "Authorization denied: you can only delete your own memory documents",
+                        "document_owner": str(doc_owner),
+                        "requested_by": str(caller_id),
+                        "fix": "M-04 — ownership validation enforced",
+                    }
+                
+                # Owner confirmed — proceed with deletion
                 db.execute(
                     delete(MemoryDocument).where(MemoryDocument.id == doc_uuid)
                 )
@@ -370,10 +378,8 @@ class MemoryMCPServer(BaseMCPServer):
                 result = {
                     "success": True,
                     "document_id": document_id,
-                    "deleted_by": str(identity_context.current_identity_id),
+                    "deleted_by": str(caller_id),
                     "document_owner": str(doc_owner),
-                    "vulnerability": "M-04",
-                    "warning": "Deleted without access control check",
                 }
             
             self.log_tool_call(

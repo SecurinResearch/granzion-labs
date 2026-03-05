@@ -401,6 +401,9 @@ class DataMCPServer(BaseMCPServer):
     ) -> Dict[str, Any]:
         """
         Execute raw SQL query (VULNERABILITY: T-02 - SQL injection).
+        
+        VULNERABILITY (V-01, V-02): No table restrictions — audit_logs can be
+        deleted, dropped, truncated, or updated via raw SQL.
         """
         try:
             self._request_count += 1
@@ -412,16 +415,16 @@ class DataMCPServer(BaseMCPServer):
             if identity_context.user_id == GUEST_USER_ID:
                 return {"error": "Authentication required. Guest/Anonymous users cannot execute SQL."}
             
-            # VULNERABILITY T-02: SQL injection
+            # VULNERABILITY V-01, V-02: No table restrictions on execute_sql
+            # audit_logs table is NOT protected — attacker can delete audit entries
+            
+            # VULNERABILITY T-02: SQL injection — no sanitization
             logger.error(
                 f"VULNERABILITY T-02: Executing raw SQL without sanitization: {query[:100]}..."
             )
             
             with get_db() as db:
                 # Execute raw SQL without any sanitization (CRITICAL VULNERABILITY!)
-                # Note: SessionWrapper should handle text() requirement for 2.0
-                # But here we explicitly can pass strings if needed, but wrapper handles it.
-                # If we use text(query), it's safe from SQLAlchemy perspective but Vulnerable to injection if query content is malicious.
                 result_proxy = db.execute(text(query))
                 
                 # Try to fetch results if it's a SELECT query

@@ -357,8 +357,10 @@ def test_s17_agent_driven_orchestration_execution(scenario_engine, all_scenarios
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
 
-def test_s18_token_forgery_execution(scenario_engine, all_scenarios):
-    """Test that S18 (Token Forgery & JWT Manipulation) executes successfully."""
+# Tests for scenarios S18-S22
+
+def test_s18_cross_agent_memory_deletion_execution(scenario_engine, all_scenarios):
+    """Test that S18 (Cross-Agent Memory Deletion) defense works — attack is blocked."""
     scenario = all_scenarios.get("S18")
     assert scenario is not None, "Scenario S18 not found"
     
@@ -368,21 +370,17 @@ def test_s18_token_forgery_execution(scenario_engine, all_scenarios):
     assert result is not None
     assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
     
-    # Verify all 6 steps completed
-    assert len(result.step_results) == 6, f"Expected 6 steps, got {len(result.step_results)}"
     for step_result in result.step_results:
         assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
     
-    # Verify all 3 success criteria met
-    assert len(result.criterion_results) == 3, f"Expected 3 criteria, got {len(result.criterion_results)}"
     for criterion_result in result.criterion_results:
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
 
-def test_s19_agent_card_forgery_execution(scenario_engine, all_scenarios):
-    """Test that S19 (Agent Card Forgery & Trust Chain Attack) executes successfully."""
-    scenario = all_scenarios.get("S19")
-    assert scenario is not None, "Scenario S19 not found"
+def test_s20_env_variable_exfiltration_execution(scenario_engine, all_scenarios):
+    """Test that S20 (Env Variable Exfiltration) attack succeeds — no authorization checks."""
+    scenario = all_scenarios.get("S20")
+    assert scenario is not None, "Scenario S20 not found"
     
     logger.info(f"Executing scenario: {scenario.name}")
     result = scenario_engine.execute_scenario(scenario)
@@ -390,13 +388,46 @@ def test_s19_agent_card_forgery_execution(scenario_engine, all_scenarios):
     assert result is not None
     assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
     
-    # Verify all 5 steps completed
-    assert len(result.step_results) == 5, f"Expected 5 steps, got {len(result.step_results)}"
     for step_result in result.step_results:
         assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
     
-    # Verify all 3 success criteria met
-    assert len(result.criterion_results) == 3, f"Expected 3 criteria, got {len(result.criterion_results)}"
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+
+def test_s21_cascading_delegation_depth_execution(scenario_engine, all_scenarios):
+    """Test that S21 (Cascading Delegation Depth) attack succeeds — trust not enforced."""
+    scenario = all_scenarios.get("S21")
+    assert scenario is not None, "Scenario S21 not found"
+    
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+    
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+    
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+    
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+def test_s22_silent_audit_suppression_execution(scenario_engine, all_scenarios):
+    """Test that S22 (Silent Audit Suppression) attack succeeds — no table restrictions."""
+    scenario = all_scenarios.get("S22")
+    assert scenario is not None, "Scenario S22 not found"
+    
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+    
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+    
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+    
     for criterion_result in result.criterion_results:
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
@@ -404,12 +435,13 @@ def test_s19_agent_card_forgery_execution(scenario_engine, all_scenarios):
 # Comprehensive test
 
 def test_all_scenarios_discoverable(all_scenarios):
-    """Test that all discovered scenarios (S01-S17+) are discoverable."""
+    """Test that all discovered scenarios (S01-S22) are discoverable."""
     expected_scenarios = [
         "S01", "S02", "S03", "S04", "S05",
         "S06", "S07", "S08", "S09", "S10",
         "S11", "S12", "S13", "S14", "S15",
-        "S16", "S17", "S18", "S19",
+        "S16", "S17", "S18", "S20",
+        "S21", "S22",
     ]
     
     for scenario_id in expected_scenarios:

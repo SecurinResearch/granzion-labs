@@ -67,15 +67,22 @@ def step1_user_requests_analysis():
 
 def step2_orchestrator_delegates_to_researcher():
     """Orchestrator sends analysis task to Researcher."""
+    import asyncio
     comms_mcp = CommsMCPServer()
     identity_ctx = IdentityContext(user_id=uuid4(), agent_id=scenario_state["orchestrator_id"], permissions={"read", "write", "delegate"})
-    result = comms_mcp.send_message(
-        to_agent_id=scenario_state["researcher_id"],
-        message='{"task": "analyze_users", "parameters": {}}',
-        identity_context=identity_ctx,
-    )
-    logger.info("Orchestrator delegated analysis to Researcher")
-    return result.get("success", False)
+    try:
+        result = asyncio.run(
+            comms_mcp.send_message(
+                to_agent_id=scenario_state["researcher_id"],
+                message='{"task": "analyze_users", "parameters": {}}',
+                identity_context=identity_ctx,
+            )
+        )
+        logger.info("Orchestrator delegated analysis to Researcher")
+        return result.get("success", False)
+    except Exception as e:
+        logger.error(f"send_message failed: {e}")
+        return False
 
 
 def step3_inject_malicious_task():
@@ -129,13 +136,16 @@ def step4_orchestrator_receives_injected_task():
 
 def step5_orchestrator_delegates_to_executor():
     """Orchestrator delegates injected task to Executor."""
+    import asyncio
     try:
         comms_mcp = CommsMCPServer()
         identity_ctx = IdentityContext(user_id=uuid4(), agent_id=scenario_state["orchestrator_id"], permissions={"read", "write", "delegate"})
-        result = comms_mcp.send_message(
-            to_agent_id=scenario_state["executor_id"],
-            message=scenario_state.get("injected_task") or "",
-            identity_context=identity_ctx,
+        result = asyncio.run(
+            comms_mcp.send_message(
+                to_agent_id=scenario_state["executor_id"],
+                message=scenario_state.get("injected_task") or "",
+                identity_context=identity_ctx,
+            )
         )
         logger.info("Orchestrator delegated injected task to Executor")
         return result.get("success", False)

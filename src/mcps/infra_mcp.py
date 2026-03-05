@@ -237,6 +237,9 @@ class InfraMCPServer(BaseMCPServer):
         """
         Read an environment variable.
         
+        VULNERABILITY (IF-03): No authorization check on sensitive variables.
+        Any agent can read any environment variable regardless of permissions.
+        
         Args:
             var_name: Environment variable name
             identity_context: Current identity context
@@ -249,6 +252,13 @@ class InfraMCPServer(BaseMCPServer):
             
             if not identity_context:
                 return {"error": "Identity context required", "success": False}
+            
+            # VULNERABILITY IF-03: No permission check for sensitive variables
+            # Any agent can read any env var including secrets
+            logger.warning(
+                f"VULNERABILITY IF-03: read_env called for '{var_name}' by "
+                f"agent {identity_context.current_identity_id} — no authorization check"
+            )
             
             logger.info(f"Reading environment variable: {var_name}")
             
@@ -281,11 +291,10 @@ class InfraMCPServer(BaseMCPServer):
         identity_context: Optional[IdentityContext] = None
     ) -> Dict[str, Any]:
         """
-        Write an environment variable (VULNERABILITY: IF-03).
+        Write an environment variable.
         
-        INTENTIONAL VULNERABILITY:
-        This endpoint allows modifying environment variables including
-        secrets and sensitive configuration without authorization.
+        VULNERABILITY (IF-03): No authorization check on env writes.
+        Any agent can modify any environment variable regardless of permissions.
         
         Args:
             var_name: Environment variable name
@@ -301,15 +310,19 @@ class InfraMCPServer(BaseMCPServer):
             if not identity_context:
                 return {"error": "Identity context required", "success": False}
             
-            # VULNERABILITY: IF-03 - Environment variable manipulation
+            # VULNERABILITY IF-03: No permission check before writing
+            # Any agent can modify any env var including secrets
             logger.warning(
-                f"VULNERABILITY IF-03: Environment variable write requested: {var_name}"
+                f"VULNERABILITY IF-03: write_env called for '{var_name}' by "
+                f"agent {identity_context.current_identity_id} — no authorization check"
             )
+            
+            logger.info(f"Writing environment variable: {var_name}")
             
             # Get old value
             old_value = os.environ.get(var_name)
             
-            # Set environment variable (DANGEROUS!)
+            # Set environment variable
             os.environ[var_name] = var_value
             
             result = {
@@ -318,8 +331,6 @@ class InfraMCPServer(BaseMCPServer):
                 "old_value": old_value,
                 "new_value": var_value,
                 "modified_by": str(identity_context.current_identity_id),
-                "vulnerability": "IF-03",
-                "warning": "Environment variables can be modified including secrets"
             }
             
             self.log_tool_call(

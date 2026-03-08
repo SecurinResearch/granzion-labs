@@ -1,5 +1,5 @@
 """
-Execution tests for all attack scenarios (S01-S16).
+Execution tests for all attack scenarios (S01-S25).
 
 These tests verify that each scenario can be executed successfully and that
 success criteria are met. Also validates threat ID consistency with the taxonomy.
@@ -319,6 +319,8 @@ def test_s15_detection_evasion_execution(scenario_engine, all_scenarios):
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
 
+# Tests for scenarios S16-S19
+
 def test_s16_replay_attack_execution(scenario_engine, all_scenarios):
     """Test that S16 (Replay Attack) executes successfully."""
     scenario = all_scenarios.get("S16")
@@ -401,20 +403,89 @@ def test_s19_agent_card_forgery_execution(scenario_engine, all_scenarios):
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
 
+# Tests for scenarios S20-S25
+
+def test_s23_tool_response_smuggling_execution(scenario_engine, all_scenarios):
+    """Test that S23 (Tool Response Smuggling & Prompt Exfiltration) executes successfully."""
+    scenario = all_scenarios.get("S23")
+    assert scenario is not None, "Scenario S23 not found"
+
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+
+    # Verify all 3 steps completed
+    assert len(result.step_results) == 3, f"Expected 3 steps, got {len(result.step_results)}"
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+
+    # Verify all 3 success criteria met
+    assert len(result.criterion_results) == 3, f"Expected 3 criteria, got {len(result.criterion_results)}"
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+def test_s24_tool_schema_poisoning_execution(scenario_engine, all_scenarios):
+    """Test that S24 (MCP Tool Schema Poisoning via Registry Tampering) executes successfully."""
+    scenario = all_scenarios.get("S24")
+    assert scenario is not None, "Scenario S24 not found"
+
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+
+    # Verify all 3 steps completed
+    assert len(result.step_results) == 3, f"Expected 3 steps, got {len(result.step_results)}"
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+
+    # Verify all 3 success criteria met
+    assert len(result.criterion_results) == 3, f"Expected 3 criteria, got {len(result.criterion_results)}"
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+def test_s25_stale_session_hijack_execution(scenario_engine, all_scenarios):
+    """Test that S25 (Stale Session Token Hijack via Agent Teardown Race Condition) executes successfully."""
+    scenario = all_scenarios.get("S25")
+    assert scenario is not None, "Scenario S25 not found"
+
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+
+    # Verify all 3 steps completed
+    assert len(result.step_results) == 3, f"Expected 3 steps, got {len(result.step_results)}"
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+
+    # Verify all 3 success criteria met
+    assert len(result.criterion_results) == 3, f"Expected 3 criteria, got {len(result.criterion_results)}"
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
 # Comprehensive test
 
 def test_all_scenarios_discoverable(all_scenarios):
-    """Test that all discovered scenarios (S01-S17+) are discoverable."""
+    """Test that all discovered scenarios (S01-S25) are discoverable."""
     expected_scenarios = [
         "S01", "S02", "S03", "S04", "S05",
         "S06", "S07", "S08", "S09", "S10",
         "S11", "S12", "S13", "S14", "S15",
-        "S16", "S17", "S18", "S19",
+        "S16", "S17", "S18", "S19", "S23",
+        "S24", "S25",
     ]
-    
+
     for scenario_id in expected_scenarios:
         assert scenario_id in all_scenarios, f"Scenario {scenario_id} not discovered"
-    
+
     logger.info(f"All {len(expected_scenarios)} scenarios discovered successfully")
 
 

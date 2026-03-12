@@ -432,6 +432,62 @@ def test_s22_silent_audit_suppression_execution(scenario_engine, all_scenarios):
         assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
 
 
+# Tests for scenarios S28-S30 (Agent-vs-Agent)
+
+def test_s28_agent_impersonation_relay_execution(scenario_engine, all_scenarios):
+    """Test that S28 (Agent Impersonation Relay) executes successfully."""
+    scenario = all_scenarios.get("S28")
+    assert scenario is not None, "Scenario S28 not found"
+    
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+    
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+    
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+    
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+def test_s29_monitor_blinding_execution(scenario_engine, all_scenarios):
+    """Test that S29 (Monitor Blinding) executes successfully."""
+    scenario = all_scenarios.get("S29")
+    assert scenario is not None, "Scenario S29 not found"
+    
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+    
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+    
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+    
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
+def test_s30_researcher_weaponization_execution(scenario_engine, all_scenarios):
+    """Test that S30 (Researcher Knowledge Weaponization) executes successfully."""
+    scenario = all_scenarios.get("S30")
+    assert scenario is not None, "Scenario S30 not found"
+    
+    logger.info(f"Executing scenario: {scenario.name}")
+    result = scenario_engine.execute_scenario(scenario)
+    
+    assert result is not None
+    assert result.success, f"Scenario failed: {'; '.join(result.errors) if result.errors else 'Unknown'}"
+    
+    for step_result in result.step_results:
+        assert step_result.get("status") == "completed", f"Step failed: {step_result.get('description', '')}"
+    
+    for criterion_result in result.criterion_results:
+        assert criterion_result.get("passed", False), f"Criterion not met: {criterion_result.get('description', '')}"
+
+
 # Comprehensive test
 
 def test_all_scenarios_discoverable(all_scenarios):
@@ -441,7 +497,7 @@ def test_all_scenarios_discoverable(all_scenarios):
         "S06", "S07", "S08", "S09", "S10",
         "S11", "S12", "S13", "S14", "S15",
         "S16", "S17", "S18", "S20",
-        "S21", "S22",
+        "S21", "S22", "S28", "S29", "S30",
     ]
     
     for scenario_id in expected_scenarios:

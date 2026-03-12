@@ -84,6 +84,15 @@ scenario = AttackScenario(
 ### Orchestration (Category 5) — Agent-driven
 - **S17**: Agent-Driven Orchestration (Research Flow) — *prompt → API → agent → assert state*
 
+### Communication (Category 6) — Agent-vs-Agent
+- **S28**: Agent Impersonation Relay Attack (Executor impersonates Orchestrator to attack Researcher)
+
+### Visibility (Category 9) — Agent-vs-Agent
+- **S29**: Monitor Blinding via Orchestrator Spoofing
+
+### Memory (Category 3) — Agent-vs-Agent
+- **S30**: Researcher Knowledge Weaponization (multi-agent chain attack)
+
 ## Agent-driven vs direct MCP/DB
 
 - **Agent-driven**: Scenario sends a prompt to an agent via the API (`POST /agents/{id}/run`), then asserts on DB/audit/messages. Proves the vulnerability is exploitable *through the agent*.

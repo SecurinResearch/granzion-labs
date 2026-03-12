@@ -497,7 +497,8 @@ def test_all_scenarios_discoverable(all_scenarios):
         "S06", "S07", "S08", "S09", "S10",
         "S11", "S12", "S13", "S14", "S15",
         "S16", "S17", "S18", "S20",
-        "S21", "S22", "S28", "S29", "S30",
+        "S21", "S22","S24", "S25",
+        "S26", "S27", "S28", "S29", "S30",
     ]
     
     for scenario_id in expected_scenarios:

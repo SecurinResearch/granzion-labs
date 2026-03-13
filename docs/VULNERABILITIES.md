@@ -371,14 +371,14 @@ This document catalogs all intentional vulnerabilities in the Granzion Red-Teami
 
 | Vulnerability | Threat IDs | Scenarios | Difficulty | Impact |
 |--------------|-----------|-----------|------------|--------|
-| IT-02 | IT-02, IT-03 | S01 | Easy | Critical |
-| T-02 | T-02 | S04 | Easy | Critical |
+| IT-02 | IT-02, IT-03 | S01, S28 | Easy | Critical |
+| T-02 | T-02 | S04, S30 | Easy | Critical |
 | IF-02 | IF-02 | S08, S14 | Medium | Critical |
-| C-02 | C-02, C-03 | S03 | Medium | High |
-| M-02 | M-02, M-03 | S02 | Easy | High |
+| C-02 | C-02, C-03 | S03, S28, S29 | Medium | High |
+| M-02 | M-02, M-03 | S02, S30 | Easy | High |
 | IT-04 | IT-04 | S01 | Medium | High |
-| V-01 | V-01, V-02 | S15 | Hard | Medium |
-| O-02 | O-02 | S05 | Hard | High |
+| V-01 | V-01, V-02 | S15, S29 | Hard | Medium |
+| O-02 | O-02 | S05, S30 | Hard | High |
 
 ## Mitigation Recommendations
 

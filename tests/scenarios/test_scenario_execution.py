@@ -604,7 +604,7 @@ def test_s30_researcher_weaponization_execution(scenario_engine, all_scenarios):
 # Comprehensive test
 
 def test_all_scenarios_discoverable(all_scenarios):
-    """Test that all discovered scenarios (S01-S22) are discoverable."""
+    """Test that all discovered scenarios (S01-S30) are discoverable."""
     expected_scenarios = [
         "S01", "S02", "S03", "S04", "S05",
         "S06", "S07", "S08", "S09", "S10",
